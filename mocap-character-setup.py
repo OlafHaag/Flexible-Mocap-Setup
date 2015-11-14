@@ -486,7 +486,6 @@ def populateTool(mainLyt):
             templateModel.FBDelete() # We do not need the template model anymore.
 
             # Characterize the skeleton and create a control rig.
-            # TODO Check for Radiobutton if ControlRig is selected
             character = characterizeSkeleton(characterName, skeleton, False)
             # Setup the markers as constraints for the joints according to the jointMap drivers
             applyCharacterMapping(FBApplication().CurrentCharacter)
@@ -624,7 +623,7 @@ def populateTool(mainLyt):
     JMLayout = FBLayout()
 
     ### Buttons ###
-    # TODO: Callback funtions for buttons
+    # TODO: Callback functions for buttons
     x = FBAddRegionParam(0,FBAttachType.kFBAttachLeft,"")
     y = FBAddRegionParam(0,FBAttachType.kFBAttachTop,"")
     w = FBAddRegionParam(0,FBAttachType.kFBAttachRight,"")
