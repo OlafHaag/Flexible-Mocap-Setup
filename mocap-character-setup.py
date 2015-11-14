@@ -24,12 +24,6 @@ from pyfbsdk_additions import *
 import os.path
 #import math
 
-# Eh... until I know better, some global variables
-# TODO Try making them local again
-characterName = 'MocapSkeleton'
-skeleton = {}
-bControlRig = False
-
 ###############################################################
 # Helper Function(s).                                         #
 ###############################################################
@@ -136,7 +130,7 @@ def loadJointMap(fileName = None, pPath = None):
     else:
         pPath += "\\"
     filePath = pPath + fileName
-    if not os.path.isfile(filePath) and pPath != "": 
+    if not os.path.isfile(filePath) and pPath != "":
         FBMessageBox("Waring","%s << This file does not exist. Using default settings." % filePath, "Ok")
         return
 
@@ -227,7 +221,7 @@ def getJointEstimations():
     return jointEstimations
 
 # After estimating performer's joint positions from animation, update the jointMap.
-def updatejointMapTranslations(jointEstimations):
+def updateJointMapTranslations(jointEstimations):
     global jointMap
     for jointName, (parentName, estimators, drivers, constraintType, translation) in jointMap.iteritems():
         # Only if jointName exists in jointEstimations.
@@ -249,7 +243,7 @@ def updatejointMapTranslations(jointEstimations):
 # Create a skeleton in a T-pose facing along the positive Z axis.
 def createSkeleton(pNamespace):
     global jointMap
-    global skeleton #TODO try making it local again
+    skeleton = {}
 
     # Populate the skeleton with joints.
     for jointName, (parentName, estimators, drivers, constraintType, translation) in jointMap.iteritems():
@@ -282,7 +276,7 @@ def createSkeleton(pNamespace):
     return skeleton
 
 # Characterize the skeleton and create a control rig.
-# TODO Bug with bControlRig, Check if there's a skeleton
+# TODO Check if there's a skeleton
 def characterizeSkeleton(pCharacterName, pSkeleton, pControlRig = False):
     # Create a new character.
     character = FBCharacter(pCharacterName)
@@ -298,12 +292,9 @@ def characterizeSkeleton(pCharacterName, pSkeleton, pControlRig = False):
 
     # Create a control rig using Forward and Inverse Kinematics,
     # as specified by the "True" parameter.
-    print "ConttrolRig?", bControlRig
-    if pControlRig:
-        character.CreateControlRig(True)
-
-        # Set the control rig to active.
-        character.ActiveInput = True
+    character.CreateControlRig(pControlRig)
+    # Set the control rig to active if True.
+    character.ActiveInput = pControlRig
 
     return character
 
@@ -370,7 +361,7 @@ def applyModelToSkeleton(pSkeleton, pModel):
 '''---CONNECT MARKERS TO THE SKELETON---'''
 # In the end we still need to connect the markers with the skeleton.
 # This is done by loading a previously saved mapping from file.
-def characterMapping(pCharacter = FBApplication().CurrentCharacter):
+def applyCharacterMapping(pCharacter = FBApplication().CurrentCharacter):
     global markerList
     global jointMap
 
@@ -431,7 +422,88 @@ def characterMapping(pCharacter = FBApplication().CurrentCharacter):
 ###############################################################
 # User Interface                                              #
 ###############################################################
-def PopulateLayout(mainLyt):
+def populateTool(mainLyt):
+    characterName = 'MocapSkeleton'
+
+    '''*************************#
+    # Button Callback Functions #
+    #*************************'''
+    def loadBtnCallback(control, event):
+        # Create the file-open popup and set necessary initial values.
+        lFp = FBFilePopup()
+        lFp.Caption = "Select a Joint-Map configuration file."
+        lFp.Style = FBFilePopupStyle.kFBFilePopupOpen
+
+        # BUG: If we do not set the filter, we will have an exception.
+        lFp.Filter = "*"
+
+        # Set the default path.
+        lFp.Path = FBSystem().UserConfigPath
+
+        # Get the GUI to show.
+        lRes = lFp.Execute()
+
+        # First update the jointMap dictionary, then update the display.
+        loadJointMap(lFp.FileName, lFp.Path)
+        updateSpreadSheet(spread)
+
+        # Cleanup.
+        #del( lFp, lRes, FBFilePopup, FBFilePopupStyle, FBMessageBox )
+        del( lFp, lRes)
+
+    def estimateBtnCallback(control, event):
+        # If we find enough markers, adjust joint positions.
+        if getMarkers():
+            jointEstimations = getJointEstimations()
+            updateJointMapTranslations(jointEstimations)
+            updateSpreadSheet(spread)
+
+    def createBtnCallback(control, event):
+        createBtnCallback.skeleton = createSkeleton(characterName)
+        # Apply a model to each limb of the skeleton.
+        templateModel = createModel()
+        applyModelToSkeleton(createBtnCallback.skeleton, templateModel)
+        templateModel.FBDelete() # We do not need the template model anymore.
+    # Hack to use outer scope for skeleton, because in Python 2.x there's no nonlocal keyword.
+    createBtnCallback.skeleton = {}
+
+    def characterizeBtnCallback(control, event):
+        # Characterize the skeleton and create a control rig.
+        character = characterizeSkeleton(characterName, createBtnCallback.skeleton, controlRigRadioBtnCallback.bControlRig)
+
+    def mappingBtnCallback(control, event):
+        # Setup the markers as constraints for the joints according to the jointMap drivers
+        # Make sure there are markers.
+        if getMarkers():
+            applyCharacterMapping(FBApplication().CurrentCharacter)
+
+    def automaticBtnCallback(control, event):
+        if getMarkers():
+            skeleton = createSkeleton(characterName)
+            # Apply a model to each limb of the skeleton.
+            templateModel = createModel()
+            applyModelToSkeleton(skeleton, templateModel)
+            templateModel.FBDelete() # We do not need the template model anymore.
+
+            # Characterize the skeleton and create a control rig.
+            # TODO Check for Radiobutton if ControlRig is selected
+            character = characterizeSkeleton(characterName, skeleton, False)
+            # Setup the markers as constraints for the joints according to the jointMap drivers
+            applyCharacterMapping(FBApplication().CurrentCharacter)
+
+    def controlRigRadioBtnCallback(control, event):
+        if control.Caption == "ControlRig":
+            controlRigRadioBtnCallback.bControlRig = True
+        else:
+            controlRigRadioBtnCallback.bControlRig = False
+            # Hack to use outer scope for bControlRig, because in Python 2.x there's no nonlocal keyword.
+    controlRigRadioBtnCallback.bControlRig = False
+
+    '''*************#
+    # Create Layout #
+    #*************'''
+
+    # We will use a tabbed layout.
     tab = FBTabControl()
 
     # Insert tab control
@@ -443,94 +515,102 @@ def PopulateLayout(mainLyt):
     mainLyt.AddRegion("tab", "tab",x,y,w,h)
     mainLyt.SetControl("tab", tab)
 
-    # Create layout that will be "tabbable".
-    
+    # Create layouts for the tabs.
+
     #***************#
     #   Tasks tab   #
     #***************#
     name = "Tasks"
     tasksLayout = FBVBoxLayout()
-    
+
     # Automatic button
     btn = FBButton()
     btn.Caption = "Automatic"
     btn.Justify = FBTextJustify.kFBTextJustifyCenter
     tasksLayout.Add(btn,60)
     btn.OnClick.Add(automaticBtnCallback)
-    
+
     # Instruction for manual setup.
     row = FBHBoxLayout(FBAttachType.kFBAttachLeft)
-    row.AddRelative(None)    
+    row.AddRelative(None)
     lab1 = FBLabel()
     lab1.Caption = "\n\nManual Setup:"
     lab1.Justify = FBTextJustify.kFBTextJustifyCenter
+    lab1.Style = FBTextStyle.kFBTextStyleUnderlined
     lab1.WordWrap = True
-    row.Add(lab1, 80)
+    row.Add(lab1, 100)
     row.AddRelative(None)
     tasksLayout.Add(row,60)
-    
+
     # Load JointMap button
     btn = FBButton()
     btn.Caption = "1. Load JointMap (optional)"
     btn.Justify = FBTextJustify.kFBTextJustifyCenter
     tasksLayout.Add(btn,60)
     btn.OnClick.Add(loadBtnCallback)
-    
+
+    # Estimate Joint Positions from Markers
+    btn = FBButton()
+    btn.Caption = "2. Estimate Joint Positions from Markers (optional)"
+    btn.Justify = FBTextJustify.kFBTextJustifyCenter
+    tasksLayout.Add(btn,60)
+    btn.OnClick.Add(estimateBtnCallback)
+
     # Create Skeleton button
     btn = FBButton()
-    btn.Caption = "2. Create Skeleton"
+    btn.Caption = "3. Create Skeleton"
     btn.Justify = FBTextJustify.kFBTextJustifyCenter
     tasksLayout.Add(btn,60)
     btn.OnClick.Add(createBtnCallback)
-    
+
     # Instruction for manual setup.
     row = FBHBoxLayout(FBAttachType.kFBAttachLeft)
-    row.AddRelative(None)    
+    row.AddRelative(None)
     lab1 = FBLabel()
-    lab1.Caption = "3. Now manually adjust joint positions if you need to."
+    lab1.Caption = "4. Now manually adjust joint positions if you need to."
     lab1.Justify = FBTextJustify.kFBTextJustifyCenter
     lab1.WordWrap = True
     row.Add(lab1, 150)
     row.AddRelative(None)
-    tasksLayout.Add(row,60)
-    
-    # Radio Buttons for manual or automatic setup.    
+    tasksLayout.Add(row,35)
+
+    # Radio Buttons for manual or automatic setup.
     group = FBButtonGroup()
-    group.AddCallback(BtnRadioCallback)
-    
+    group.AddCallback(controlRigRadioBtnCallback)
+
     # First button manual
     rBtnName = "ControlRig"
     rbtn1 = FBButton()
     rbtn1.Caption = "ControlRig"
     rbtn1.Style = FBButtonStyle.kFBRadioButton
-    rbtn1.State = bControlRig
-    group.Add(rbtn1)    
-    
+    rbtn1.State = controlRigRadioBtnCallback.bControlRig
+    group.Add(rbtn1)
+
     # Second button automatic
     rBtnName = "NoRig"
     rbtn2 = FBButton()
     rbtn2.Caption = "No Rig"
     rbtn2.Style = FBButtonStyle.kFBRadioButton
-    rbtn2.State = not bControlRig
+    rbtn2.State = not controlRigRadioBtnCallback.bControlRig
     group.Add(rbtn2)
-    
+
     row = FBHBoxLayout(FBAttachType.kFBAttachLeft)
-    row.AddRelative(None)    
+    row.AddRelative(None)
     row.Add(rbtn1, 100)
     row.Add(rbtn2, 100)
     row.AddRelative(None)
-    tasksLayout.Add(row,60)
-    
+    tasksLayout.Add(row,35)
+
     # Characterize button
     btn = FBButton()
-    btn.Caption = "4. Characterize Skeleton"
+    btn.Caption = "5. Characterize Skeleton"
     btn.Justify = FBTextJustify.kFBTextJustifyCenter
     tasksLayout.Add(btn,60)
     btn.OnClick.Add(characterizeBtnCallback)
-    
+
     # Character Mapping button
     btn = FBButton()
-    btn.Caption = "5. Map Markers onto Skeleton"
+    btn.Caption = "6. Map Markers onto Skeleton"
     btn.Justify = FBTextJustify.kFBTextJustifyCenter
     tasksLayout.Add(btn,60)
     btn.OnClick.Add(mappingBtnCallback)
@@ -550,7 +630,7 @@ def PopulateLayout(mainLyt):
     w = FBAddRegionParam(0,FBAttachType.kFBAttachRight,"")
     h = FBAddRegionParam(35,FBAttachType.kFBAttachNone,"")
     JMLayout.AddRegion("buttons","buttons", x, y, w, h)
-    
+
     buttonsLyt = FBHBoxLayout(FBAttachType.kFBAttachLeft)
     btnNames = ["Load", "Save", "SaveAs", "Clear", "Update from Skeleton", "Add Joint", "Remove Joint"]
     for btnName in btnNames:
@@ -558,24 +638,24 @@ def PopulateLayout(mainLyt):
         b.Caption = btnName
         buttonsLyt.Add(b, 100)
     JMLayout.SetControl("buttons", buttonsLyt)
-    
+
     ### Spreadsheet ###
     x = FBAddRegionParam(0,FBAttachType.kFBAttachLeft,"")
     y = FBAddRegionParam(40,FBAttachType.kFBAttachTop,"")
     w = FBAddRegionParam(0,FBAttachType.kFBAttachRight,"")
     h = FBAddRegionParam(0,FBAttachType.kFBAttachBottom,"")
     JMLayout.AddRegion("spreadContent","spreadContent", x, y, w, h)
-    
+
     spread = FBSpread()
     spread.Caption = "Joints"
     JMLayout.SetControl("spreadContent", spread)
 
     #spread.OnCellChange.Add(OnSpreadEvent)
-    
+
     updateSpreadSheet(spread)
 
     tab.Add(name,JMLayout)
-    
+
     #**************#
     #   Help tab   #
     #**************#
@@ -584,7 +664,7 @@ def PopulateLayout(mainLyt):
     '''
     anchor = FBAttachType.kFBAttachTop
     anchorRegion = ""
-    
+
     x = FBAddRegionParam(0,FBAttachType.kFBAttachLeft,"")
     y = FBAddRegionParam(0,FBAttachType.kFBAttachTop,"")
     w = FBAddRegionParam(0,FBAttachType.kFBAttachRight,"")
@@ -609,20 +689,20 @@ def PopulateLayout(mainLyt):
     btn.SetContent( "Help on Tasks tab", layout, 250, 250 )
     anchor = FBAttachType.kFBAttachBottom
     anchorRegion = arrowName
-    '''    
+    '''
     tab.Add(name,layout)
-        
-    # Set starting tab to the first one (Tasks).  
+
+    # Set starting tab to the first one (Tasks).
     tab.SetContent(0)
     tab.TabPanel.TabStyle = 0 # normal tabs
 
 # Update SpreadSheet
 def updateSpreadSheet(spread):
     global jointMap
-    
-    # Delete the previous content. 
+
+    # Delete the previous content.
     spread.Clear()
-    
+
     spread.GetColumn(-1).Width = 100
     spread.ColumnAdd("Parent")
     spread.GetColumn(0).Width = 100
@@ -666,95 +746,21 @@ def updateSpreadSheet(spread):
         spread.SetCellValue(rowRefIndex, 6, jointMap[jointName][4][2])
 
         rowRefIndex += 1
-    
-# Button creation
-def loadBtnCallback(control, event):
-    # Create the file-open popup and set necessary initial values.
-    lFp = FBFilePopup()
-    lFp.Caption = "Select a Joint-Map configuration file."
-    lFp.Style = FBFilePopupStyle.kFBFilePopupOpen
 
-    # BUG: If we do not set the filter, we will have an exception.
-    lFp.Filter = "*"
 
-    # Set the default path.
-    lFp.Path = FBSystem().UserConfigPath
-
-    # Get the GUI to show.
-    lRes = lFp.Execute()
-
-    # If we find enough markers, adjust joint positions.
-    if getMarkers():
-        loadJointMap(lFp.FileName, lFp.Path)
-        # TODO: How to get spread object?
-        #updateSpreadSheet()
-        # TODO: Only estimate joints, when chosen via Radiobutton
-        jointEstimations = getJointEstimations()
-        updatejointMapTranslations(jointEstimations)
-
-    # Cleanup.
-    #del( lFp, lRes, FBFilePopup, FBFilePopupStyle, FBMessageBox )
-    del( lFp, lRes)
-    
-def createBtnCallback(control, event):
-    # TODO: Until I know how to make these locals again
-    global characterName
-    global skeleton
-    
-    skeleton = createSkeleton(characterName)
-    # Apply a model to each limb of the skeleton.
-    templateModel = createModel()
-    applyModelToSkeleton(skeleton, templateModel)
-    templateModel.FBDelete() # We do not need the template model anymore.
-    
-def characterizeBtnCallback(control, event):
-    # TODO: Until I know how to make these locals again
-    global characterName
-    global skeleton
-    global bControlRig
-    # Characterize the skeleton and create a control rig.
-    character = characterizeSkeleton(characterName, skeleton, bControlRig)
-    
-def mappingBtnCallback(control, event):
-    # Setup the markers as constraints for the joints according to the jointMap drivers
-    # Make sure there are markers.
-    if getMarkers():
-        characterMapping(FBApplication().CurrentCharacter)
-        
-def automaticBtnCallback(control, event):
-    global characterName
-    if getMarkers():        
-        skeleton = createSkeleton(characterName)
-        # Apply a model to each limb of the skeleton.
-        templateModel = createModel()
-        applyModelToSkeleton(skeleton, templateModel)
-        templateModel.FBDelete() # We do not need the template model anymore.
-        
-        # Characterize the skeleton and create a control rig.
-        # TODO Check for Radiobutton if ControlRig is selected
-        character = characterizeSkeleton(characterName, skeleton, False)
-        # Setup the markers as constraints for the joints according to the jointMap drivers
-        characterMapping(FBApplication().CurrentCharacter)
-    
-def BtnRadioCallback(control, event):
-    if control.Caption == "ControlRig":
-        bControlRig = True
-    else:
-        bControlRig = False
-
-def CreateTool():
+def createTool():
     # Tool creation will serve as the hub for all other controls.
     tool = FBCreateUniqueTool("Motion Capture Skeleton Setup")
     tool.StartSizeX = 762
-    tool.StartSizeY = 580
-    PopulateLayout(tool)
+    tool.StartSizeY = 600
+    populateTool(tool)
     ShowTool(tool)
 
 ###############################################################
 # Main.                                                       #
 ###############################################################
 def main():
-    CreateTool()
+    createTool()
 
 # This is actually where the script starts.
 # check namespace
