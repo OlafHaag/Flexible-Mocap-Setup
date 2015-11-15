@@ -520,7 +520,20 @@ def populateTool(mainLyt):
     #   Tasks tab   #
     #***************#
     name = "Tasks"
+
+    # create a scrollbox
+    scrollTasksLyt = FBScrollBox()
+    #mainLyt.SetControl("main",scroll)
+    # Content property is the scrollbox's layout: create a region in it
+    scrollTasksLyt.Content.AddRegion( "tasksContent", "tasksContent", x, y, w, h )
+
+    # Vertical box layout for the buttons.
     tasksLayout = FBVBoxLayout()
+
+    # set our vertical box layout as the content of the scrollbox
+    scrollTasksLyt.Content.SetControl("tasksContent", tasksLayout)
+    # init the scrollbox content size. We will be able to scroll on this size.
+    scrollTasksLyt.SetContentSize(700, 530)
 
     # Automatic button
     btn = FBButton()
@@ -614,7 +627,7 @@ def populateTool(mainLyt):
     tasksLayout.Add(btn,60)
     btn.OnClick.Add(mappingBtnCallback)
 
-    tab.Add(name,tasksLayout)
+    tab.Add(name,scrollTasksLyt)
 
     #**************#
     # jointMap tab #
@@ -751,7 +764,7 @@ def createTool():
     # Tool creation will serve as the hub for all other controls.
     tool = FBCreateUniqueTool("Motion Capture Skeleton Setup")
     tool.StartSizeX = 762
-    tool.StartSizeY = 600
+    tool.StartSizeY = 610
     populateTool(tool)
     ShowTool(tool)
 
