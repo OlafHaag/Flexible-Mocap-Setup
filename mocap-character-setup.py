@@ -519,11 +519,9 @@ def populateTool(mainLyt):
     #***************#
     #   Tasks tab   #
     #***************#
-    name = "Tasks"
-
+    tabName = "Tasks"
     # create a scrollbox
     scrollTasksLyt = FBScrollBox()
-    #mainLyt.SetControl("main",scroll)
     # Content property is the scrollbox's layout: create a region in it
     scrollTasksLyt.Content.AddRegion( "tasksContent", "tasksContent", x, y, w, h )
 
@@ -627,12 +625,12 @@ def populateTool(mainLyt):
     tasksLayout.Add(btn,60)
     btn.OnClick.Add(mappingBtnCallback)
 
-    tab.Add(name,scrollTasksLyt)
+    tab.Add(tabName,scrollTasksLyt)
 
     #**************#
     # jointMap tab #
     #**************#
-    name = "JointMap"
+    tabName = "JointMap"
     JMLayout = FBLayout()
 
     ### Buttons ###
@@ -666,43 +664,83 @@ def populateTool(mainLyt):
 
     updateSpreadSheet(spread)
 
-    tab.Add(name,JMLayout)
+    tab.Add(tabName,JMLayout)
 
     #**************#
     #   Help tab   #
     #**************#
-    name = "Help"
-    layout = FBLayout()
-    '''
-    anchor = FBAttachType.kFBAttachTop
-    anchorRegion = ""
+    tabName = "Help"
 
     x = FBAddRegionParam(0,FBAttachType.kFBAttachLeft,"")
     y = FBAddRegionParam(0,FBAttachType.kFBAttachTop,"")
     w = FBAddRegionParam(0,FBAttachType.kFBAttachRight,"")
     h = FBAddRegionParam(0,FBAttachType.kFBAttachBottom,"")
-    layout.AddRegion(name,name, x, y, w, h)
-    layout.SetBorder(name,FBBorderStyle.kFBHighlightBorder,False, True,1,1,90,0)
 
-    #layout.SetControl(name,layout)
+    # create a scrollbox
+    scrollHelpLyt = FBScrollBox()
+    # Content property is the scrollbox's layout: create a region in it
+    scrollHelpLyt.Content.AddRegion( "helpContent", "helpContent", x, y, w, h )
+
+    # For a collapsible layout
+    helpLayout = FBLayout()
+
+    # set the collapsible layout as the content of the scrollbox
+    scrollHelpLyt.Content.SetControl("helpContent", helpLayout)
+    # init the scrollbox content size. We will be able to scroll on this size.
+    scrollHelpLyt.SetContentSize(700, 800)
+
+    # The first collapsible help text
+    layoutName = "Tasks Help"
+    layout = FBLayout()
+    x = FBAddRegionParam(10,FBAttachType.kFBAttachLeft,"")
+    y = FBAddRegionParam(10,FBAttachType.kFBAttachTop,"")
+    w = FBAddRegionParam(680,FBAttachType.kFBAttachNone,"")
+    h = FBAddRegionParam(400,FBAttachType.kFBAttachNone,"")
+    layout.AddRegion(layoutName,layoutName, x, y, w, h)
+    layout.SetBorder(layoutName,FBBorderStyle.kFBHighlightBorder,False, True,1,1,90,0)
 
     arrowName = "BtnArrowTasks"
-    x = FBAddRegionParam(10,FBAttachType.kFBAttachLeft,"")
-    y = FBAddRegionParam(10,anchor,anchorRegion)
+    x = FBAddRegionParam(0,FBAttachType.kFBAttachLeft,"")
+    y = FBAddRegionParam(0,FBAttachType.kFBAttachTop,"")
     w = FBAddRegionParam(0,FBAttachType.kFBAttachNone,"")
     h = FBAddRegionParam(0,FBAttachType.kFBAttachNone,"")
-    layout.AddRegion(arrowName ,arrowName , x, y, w, h)
+    helpLayout.AddRegion(arrowName ,arrowName , x, y, w, h)
 
     btn = FBArrowButton()
-    layout.SetControl(arrowName ,btn)
+    helpLayout.SetControl(arrowName ,btn)
 
     # Important : we set the content AFTER having added the button arrow
     # to its parent layout.
-    btn.SetContent( "Help on Tasks tab", layout, 250, 250 )
-    anchor = FBAttachType.kFBAttachBottom
-    anchorRegion = arrowName
-    '''
-    tab.Add(name,layout)
+    btn.SetContent( "Help on Tasks", layout, 730, 450 )
+
+    # The second collapsible help text
+    #anchor = FBAttachType.kFBAttachBottom
+    #anchorRegion = arrowName
+    layoutName = "Joint Map Help"
+    layout = FBLayout()
+    x = FBAddRegionParam(10,FBAttachType.kFBAttachLeft,"")
+    y = FBAddRegionParam(10,FBAttachType.kFBAttachTop,"")
+    w = FBAddRegionParam(680,FBAttachType.kFBAttachNone,"")
+    h = FBAddRegionParam(400,FBAttachType.kFBAttachNone,"")
+    layout.AddRegion(layoutName,layoutName, x, y, w, h)
+    layout.SetBorder(layoutName,FBBorderStyle.kFBHighlightBorder,False, True,1,1,90,0)
+
+    arrowName = "BtnArrowJointMap"
+    x = FBAddRegionParam(0,FBAttachType.kFBAttachLeft,"")
+    y = FBAddRegionParam(0,FBAttachType.kFBAttachBottom,"BtnArrowTasks")
+    w = FBAddRegionParam(0,FBAttachType.kFBAttachNone,"")
+    h = FBAddRegionParam(0,FBAttachType.kFBAttachNone,"")
+    helpLayout.AddRegion(arrowName ,arrowName , x, y, w, h)
+
+    btn = FBArrowButton()
+    helpLayout.SetControl(arrowName ,btn)
+
+    # Important : we set the content AFTER having added the button arrow
+    # to its parent layout.
+    btn.SetContent( "Help on Joint Map", layout, 730, 450 )
+
+    # Now add the whole help tab to the tab layout
+    tab.Add(tabName,scrollHelpLyt)
 
     # Set starting tab to the first one (Tasks).
     tab.SetContent(0)
