@@ -245,6 +245,11 @@ def createSkeleton(pNamespace):
     global jointMap
     skeleton = {}
 
+    # If there is already pNamespace, show warning and abort
+    if FBSystem().Scene.NamespaceExist(pNamespace):
+        FBMessageBox("Warning","%s namespace already exists.\nChoose another name for the character." % pNamespace, "Ok")
+        return
+
     # Populate the skeleton with joints.
     for jointName, (parentName, estimators, drivers, constraintType, translation) in jointMap.iteritems():
         if jointName == 'Reference' or jointName == 'Hips':
@@ -276,8 +281,13 @@ def createSkeleton(pNamespace):
     return skeleton
 
 # Characterize the skeleton and create a control rig.
-# TODO Check if there's a skeleton
+# TODO Check if there's a skeleton in that namespace
 def characterizeSkeleton(pCharacterName, pSkeleton, pControlRig = False):
+    # If there is no namespace with pCharacterName, show warning and abort
+    if not FBSystem().Scene.NamespaceExist(pCharacterName):
+        FBMessageBox("Warning","%s namespace does not exists.\nChoose existing skeleton namespace." % pCharacterName, "Ok")
+        return
+
     # Create a new character.
     character = FBCharacter(pCharacterName)
     FBApplication().CurrentCharacter = character
@@ -292,9 +302,10 @@ def characterizeSkeleton(pCharacterName, pSkeleton, pControlRig = False):
 
     # Create a control rig using Forward and Inverse Kinematics,
     # as specified by the "True" parameter.
-    character.CreateControlRig(pControlRig)
-    # Set the control rig to active if True.
-    character.ActiveInput = pControlRig
+    if pControlRig:
+        character.CreateControlRig(pControlRig)
+        # Set the control rig to active if True.
+        character.ActiveInput = pControlRig
 
     return character
 
@@ -306,7 +317,7 @@ def createModel():
     model.Scaling = FBVector3d(0.5, 0.5, 0.5)
 
     # Define a slightly reflective dark material.
-    material = FBMaterial('MyMaterial')
+    material = FBMaterial('SkeletonMaterial')
     material.Ambient = FBColor(0, 0, 0)
     material.Diffuse = FBColor(0, 0.04, 0.08)
     material.Specular = FBColor(0, 0.7, 0.86)
@@ -314,7 +325,7 @@ def createModel():
     model.Materials.append(material)
 
     # Create a cartoon-like shader.
-    shader = FBCreateObject('Browsing/Templates/Shading Elements/Shaders', 'Edge Cartoon', 'MyShader')
+    shader = FBCreateObject('Browsing/Templates/Shading Elements/Shaders', 'Edge Cartoon', 'SkeletonShader')
 
     # For a list of all the shader's properties do:
     #for item in shader.PropertyList:
@@ -423,11 +434,15 @@ def applyCharacterMapping(pCharacter = FBApplication().CurrentCharacter):
 # User Interface                                              #
 ###############################################################
 def populateTool(mainLyt):
-    characterName = 'MocapSkeleton'
-
+    # Button callback functions are inside here for scoping, to avoid global variables.
     '''*************************#
     # Button Callback Functions #
     #*************************'''
+    def OnCharacterNameChange(control, event):
+        OnCharacterNameChange.characterName = control.Text
+    # Hack to use outer scope for characterName, because in Python 2.x there's no nonlocal keyword.
+    OnCharacterNameChange.characterName = 'MocapSkeleton'
+
     def loadBtnCallback(control, event):
         # Create the file-open popup and set necessary initial values.
         lFp = FBFilePopup()
@@ -459,17 +474,18 @@ def populateTool(mainLyt):
             updateSpreadSheet(spread)
 
     def createBtnCallback(control, event):
-        createBtnCallback.skeleton = createSkeleton(characterName)
-        # Apply a model to each limb of the skeleton.
-        templateModel = createModel()
-        applyModelToSkeleton(createBtnCallback.skeleton, templateModel)
-        templateModel.FBDelete() # We do not need the template model anymore.
+        createBtnCallback.skeleton = createSkeleton(OnCharacterNameChange.characterName)
+        if createBtnCallback.skeleton:
+            # Apply a model to each limb of the skeleton.
+            templateModel = createModel()
+            applyModelToSkeleton(createBtnCallback.skeleton, templateModel)
+            templateModel.FBDelete() # We do not need the template model anymore.
     # Hack to use outer scope for skeleton, because in Python 2.x there's no nonlocal keyword.
     createBtnCallback.skeleton = {}
 
     def characterizeBtnCallback(control, event):
         # Characterize the skeleton and create a control rig.
-        character = characterizeSkeleton(characterName, createBtnCallback.skeleton, controlRigRadioBtnCallback.bControlRig)
+        character = characterizeSkeleton(OnCharacterNameChange.characterName, createBtnCallback.skeleton, controlRigRadioBtnCallback.bControlRig)
 
     def mappingBtnCallback(control, event):
         # Setup the markers as constraints for the joints according to the jointMap drivers
@@ -479,19 +495,19 @@ def populateTool(mainLyt):
 
     def automaticBtnCallback(control, event):
         if getMarkers():
-            skeleton = createSkeleton(characterName)
+            skeleton = createSkeleton(OnCharacterNameChange.characterName)
             # Apply a model to each limb of the skeleton.
             templateModel = createModel()
             applyModelToSkeleton(skeleton, templateModel)
             templateModel.FBDelete() # We do not need the template model anymore.
 
             # Characterize the skeleton and create a control rig.
-            character = characterizeSkeleton(characterName, skeleton, False)
+            character = characterizeSkeleton(OnCharacterNameChange.characterName, skeleton, False)
             # Setup the markers as constraints for the joints according to the jointMap drivers
             applyCharacterMapping(FBApplication().CurrentCharacter)
 
     def controlRigRadioBtnCallback(control, event):
-        if control.Caption == "ControlRig":
+        if control.Caption == "Yes":
             controlRigRadioBtnCallback.bControlRig = True
         else:
             controlRigRadioBtnCallback.bControlRig = False
@@ -533,56 +549,66 @@ def populateTool(mainLyt):
     # init the scrollbox content size. We will be able to scroll on this size.
     scrollTasksLyt.SetContentSize(700, 530)
 
+    # Label and edit box for the name of the skeleton.
+    row = FBHBoxLayout(FBAttachType.kFBAttachLeft)
+    lab1 = FBLabel()
+    lab1.Caption = "Character Name:"
+    lab1.Justify = FBTextJustify.kFBTextJustifyLeft
+    lab1.Style = FBTextStyle.kFBTextStyleBold
+    lab1.WordWrap = True
+    row.Add(lab1, 100)
+    editBox = FBEdit()
+    editBox.Text = OnCharacterNameChange.characterName
+    editBox.OnChange.Add(OnCharacterNameChange)
+    row.AddRelative(editBox)
+    tasksLayout.Add(row,20)
+
     # Automatic button
     btn = FBButton()
     btn.Caption = "Automatic"
-    btn.Justify = FBTextJustify.kFBTextJustifyCenter
+    btn.Justify = FBTextJustify.kFBTextJustifyLeft
     tasksLayout.Add(btn,60)
     btn.OnClick.Add(automaticBtnCallback)
 
     # Instruction for manual setup.
-    row = FBHBoxLayout(FBAttachType.kFBAttachLeft)
-    row.AddRelative(None)
+    #row = FBHBoxLayout(FBAttachType.kFBAttachLeft)
+    #row.AddRelative(None)
     lab1 = FBLabel()
-    lab1.Caption = "\n\nManual Setup:"
-    lab1.Justify = FBTextJustify.kFBTextJustifyCenter
+    lab1.Caption = "\nManual Setup:"
+    lab1.Justify = FBTextJustify.kFBTextJustifyLeft
     lab1.Style = FBTextStyle.kFBTextStyleUnderlined
     lab1.WordWrap = True
-    row.Add(lab1, 100)
-    row.AddRelative(None)
-    tasksLayout.Add(row,60)
+    #row.Add(lab1, 100)
+    #row.AddRelative(None)
+    tasksLayout.Add(lab1,35)
 
     # Load JointMap button
     btn = FBButton()
     btn.Caption = "1. Load JointMap (optional)"
-    btn.Justify = FBTextJustify.kFBTextJustifyCenter
+    btn.Justify = FBTextJustify.kFBTextJustifyLeft
     tasksLayout.Add(btn,60)
     btn.OnClick.Add(loadBtnCallback)
 
     # Estimate Joint Positions from Markers
     btn = FBButton()
     btn.Caption = "2. Estimate Joint Positions from Markers (optional)"
-    btn.Justify = FBTextJustify.kFBTextJustifyCenter
+    btn.Justify = FBTextJustify.kFBTextJustifyLeft
     tasksLayout.Add(btn,60)
     btn.OnClick.Add(estimateBtnCallback)
 
     # Create Skeleton button
     btn = FBButton()
     btn.Caption = "3. Create Skeleton"
-    btn.Justify = FBTextJustify.kFBTextJustifyCenter
+    btn.Justify = FBTextJustify.kFBTextJustifyLeft
     tasksLayout.Add(btn,60)
     btn.OnClick.Add(createBtnCallback)
 
     # Instruction for manual setup.
-    row = FBHBoxLayout(FBAttachType.kFBAttachLeft)
-    row.AddRelative(None)
     lab1 = FBLabel()
     lab1.Caption = "4. Now manually adjust joint positions if you need to."
-    lab1.Justify = FBTextJustify.kFBTextJustifyCenter
+    lab1.Justify = FBTextJustify.kFBTextJustifyLeft
     lab1.WordWrap = True
-    row.Add(lab1, 150)
-    row.AddRelative(None)
-    tasksLayout.Add(row,35)
+    tasksLayout.Add(lab1,20)
 
     # Radio Buttons for manual or automatic setup.
     group = FBButtonGroup()
@@ -591,7 +617,7 @@ def populateTool(mainLyt):
     # First button manual
     rBtnName = "ControlRig"
     rbtn1 = FBButton()
-    rbtn1.Caption = "ControlRig"
+    rbtn1.Caption = "Yes"
     rbtn1.Style = FBButtonStyle.kFBRadioButton
     rbtn1.State = controlRigRadioBtnCallback.bControlRig
     group.Add(rbtn1)
@@ -599,29 +625,32 @@ def populateTool(mainLyt):
     # Second button automatic
     rBtnName = "NoRig"
     rbtn2 = FBButton()
-    rbtn2.Caption = "No Rig"
+    rbtn2.Caption = "No"
     rbtn2.Style = FBButtonStyle.kFBRadioButton
     rbtn2.State = not controlRigRadioBtnCallback.bControlRig
     group.Add(rbtn2)
 
     row = FBHBoxLayout(FBAttachType.kFBAttachLeft)
-    row.AddRelative(None)
-    row.Add(rbtn1, 100)
-    row.Add(rbtn2, 100)
-    row.AddRelative(None)
-    tasksLayout.Add(row,35)
+    lab1 = FBLabel()
+    lab1.Caption = "Generate Control Rig:"
+    lab1.Justify = FBTextJustify.kFBTextJustifyLeft
+    lab1.WordWrap = True
+    row.Add(lab1, 120)
+    row.Add(rbtn1, 50)
+    row.Add(rbtn2, 50)
+    tasksLayout.Add(row,20)
 
     # Characterize button
     btn = FBButton()
     btn.Caption = "5. Characterize Skeleton"
-    btn.Justify = FBTextJustify.kFBTextJustifyCenter
+    btn.Justify = FBTextJustify.kFBTextJustifyLeft
     tasksLayout.Add(btn,60)
     btn.OnClick.Add(characterizeBtnCallback)
 
     # Character Mapping button
     btn = FBButton()
-    btn.Caption = "6. Map Markers onto Skeleton"
-    btn.Justify = FBTextJustify.kFBTextJustifyCenter
+    btn.Caption = "6. Map Markers onto current character"
+    btn.Justify = FBTextJustify.kFBTextJustifyLeft
     tasksLayout.Add(btn,60)
     btn.OnClick.Add(mappingBtnCallback)
 
