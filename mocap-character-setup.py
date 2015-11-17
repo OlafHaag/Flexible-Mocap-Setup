@@ -250,6 +250,11 @@ def createSkeleton(pNamespace):
         FBMessageBox("Warning","%s namespace already exists.\nChoose another name for the character." % pNamespace, "Ok")
         return
 
+    # If there's no jointMap, show warning and abort
+    if len(jointMap) == 0:
+        FBMessageBox("Warning","No skeleton definition.\nCreate or load Joint Map.", "Ok")
+        return
+
     # Populate the skeleton with joints.
     for jointName, (parentName, estimators, drivers, constraintType, translation) in jointMap.iteritems():
         if jointName == 'Reference' or jointName == 'Hips':
@@ -514,6 +519,78 @@ def populateTool(mainLyt):
             # Hack to use outer scope for bControlRig, because in Python 2.x there's no nonlocal keyword.
     controlRigRadioBtnCallback.bControlRig = False
 
+    #TODO
+    # Save jointMap to file
+    def saveBtnCallback(control, event):
+        print control.Caption
+
+    #TODO
+    # Save jointMap to file with a different name
+    def saveAsBtnCallback(control, event):
+        print control.Caption
+
+    # Clear the jointMap and initialize the spreadsheets columns
+    def clearBtnCallback(control, event):
+        jointMap.clear()
+        spreadInit(spread)
+
+    #TODO
+    def updateFromSkeletonBtnCallback(control, event):
+        print control.Caption
+
+    #TODO
+    def addJointBtnCallback(control, event):
+        i = 1
+        print('Joint%d' in jointMap)
+        '''
+        # Add a joint.
+        spread.RowAdd('Joint%d' % i, rowRefIndex)
+        # Set the 1st cell of the joint to display parent joint name.
+        parentName = str(jointMap[jointName][0])
+        spread.SetCellValue(rowRefIndex, 0, parentName)
+        # Set the 2nd cell of the joint to show marker IDs for estimation.
+        estimators = str(jointMap[jointName][1]).strip('[]')
+        spread.SetCellValue(rowRefIndex, 1, estimators)
+        # Set the 3rd cell of the joint to show marker IDs for constraints.
+        drivers = str(jointMap[jointName][2]).strip('[]')
+        spread.SetCellValue(rowRefIndex, 2, drivers)
+        # Show the type of constraint in the 4th cell.
+        #TODO Radiobutton for 3 options
+        spread.GetSpreadCell(rowRefIndex,3).Style = FBCellStyle.kFBCellStyleInteger
+        spread.SetCellValue(rowRefIndex, 3, jointMap[jointName][3])
+        # Split the translation into 3 seperate columns (5th, 6th, 7th).
+        spread.GetSpreadCell(rowRefIndex,4).Style = FBCellStyle.kFBCellStyleDouble
+        spread.SetCellValue(rowRefIndex, 4, jointMap[jointName][4][0])
+        spread.GetSpreadCell(rowRefIndex,5).Style = FBCellStyle.kFBCellStyleDouble
+        spread.SetCellValue(rowRefIndex, 5, jointMap[jointName][4][1])
+        spread.GetSpreadCell(rowRefIndex,6).Style = FBCellStyle.kFBCellStyleDouble
+        spread.SetCellValue(rowRefIndex, 6, jointMap[jointName][4][2])
+        '''
+        print control.Caption
+
+    # Remove the selected joint from jointMap and spreadsheet.
+    def removeJointBtnCallback(control, event):
+        i = spread.Row
+        row = spread.GetRow(i)
+        if row.Caption in jointMap: del jointMap[row.Caption]
+        print row.Caption, 'was removed from joint map.'
+        row.Remove()
+
+    #TODO
+    # Rename selected joint and all of its occurences in column 'Parent'.
+    def renameJointBtnCallback(control, event):
+        i = spread.Row
+        row = spread.GetRow(i)
+        oldName = row.Caption
+
+        # Note that the last params of FBMessageBoxGetUserValue indicates if the last button act as a cancel button.
+        # The result from the call will be a tuple containing the index of the button pressed (or -1 in case of error).
+        # The second element will be the value entered.
+        btn, value = FBMessageBoxGetUserValue("Rename Joint","Enter new name:", "", FBPopupInputType.kFBPopupString,"Ok","Cancel", None, 1, True)
+        if btn == 1:
+            row.Caption = value
+
+
     '''*************#
     # Create Layout #
     #*************'''
@@ -547,7 +624,7 @@ def populateTool(mainLyt):
     # set our vertical box layout as the content of the scrollbox
     scrollTasksLyt.Content.SetControl("tasksContent", tasksLayout)
     # init the scrollbox content size. We will be able to scroll on this size.
-    scrollTasksLyt.SetContentSize(700, 530)
+    scrollTasksLyt.SetContentSize(700, 500)
 
     # Label and edit box for the name of the skeleton.
     row = FBHBoxLayout(FBAttachType.kFBAttachLeft)
@@ -573,14 +650,14 @@ def populateTool(mainLyt):
     # Instruction for manual setup.
     #row = FBHBoxLayout(FBAttachType.kFBAttachLeft)
     #row.AddRelative(None)
-    lab1 = FBLabel()
-    lab1.Caption = "\nManual Setup:"
-    lab1.Justify = FBTextJustify.kFBTextJustifyLeft
-    lab1.Style = FBTextStyle.kFBTextStyleUnderlined
-    lab1.WordWrap = True
+    labManual = FBLabel()
+    labManual.Caption = "\nManual Setup:"
+    labManual.Justify = FBTextJustify.kFBTextJustifyLeft
+    labManual.Style = FBTextStyle.kFBTextStyleUnderlined
+    labManual.WordWrap = True
     #row.Add(lab1, 100)
     #row.AddRelative(None)
-    tasksLayout.Add(lab1,35)
+    tasksLayout.Add(labManual,35)
 
     # Load JointMap button
     btn = FBButton()
@@ -604,11 +681,11 @@ def populateTool(mainLyt):
     btn.OnClick.Add(createBtnCallback)
 
     # Instruction for manual setup.
-    lab1 = FBLabel()
-    lab1.Caption = "4. Now manually adjust joint positions if you need to."
-    lab1.Justify = FBTextJustify.kFBTextJustifyLeft
-    lab1.WordWrap = True
-    tasksLayout.Add(lab1,20)
+    labInstruction = FBLabel()
+    labInstruction.Caption = "4. Now manually adjust joint positions if you need to."
+    labInstruction.Justify = FBTextJustify.kFBTextJustifyLeft
+    labInstruction.WordWrap = True
+    tasksLayout.Add(labInstruction,20)
 
     # Radio Buttons for manual or automatic setup.
     group = FBButtonGroup()
@@ -631,11 +708,11 @@ def populateTool(mainLyt):
     group.Add(rbtn2)
 
     row = FBHBoxLayout(FBAttachType.kFBAttachLeft)
-    lab1 = FBLabel()
-    lab1.Caption = "Generate Control Rig:"
-    lab1.Justify = FBTextJustify.kFBTextJustifyLeft
-    lab1.WordWrap = True
-    row.Add(lab1, 120)
+    labCtrlRig = FBLabel()
+    labCtrlRig.Caption = "Generate Control Rig:"
+    labCtrlRig.Justify = FBTextJustify.kFBTextJustifyLeft
+    labCtrlRig.WordWrap = True
+    row.Add(labCtrlRig, 120)
     row.Add(rbtn1, 50)
     row.Add(rbtn2, 50)
     tasksLayout.Add(row,20)
@@ -663,7 +740,6 @@ def populateTool(mainLyt):
     JMLayout = FBLayout()
 
     ### Buttons ###
-    # TODO: Callback functions for buttons
     x = FBAddRegionParam(0,FBAttachType.kFBAttachLeft,"")
     y = FBAddRegionParam(0,FBAttachType.kFBAttachTop,"")
     w = FBAddRegionParam(0,FBAttachType.kFBAttachRight,"")
@@ -671,11 +747,63 @@ def populateTool(mainLyt):
     JMLayout.AddRegion("buttons","buttons", x, y, w, h)
 
     buttonsLyt = FBHBoxLayout(FBAttachType.kFBAttachLeft)
-    btnNames = ["Load", "Save", "SaveAs", "Clear", "Update from Skeleton", "Add Joint", "Remove Joint"]
-    for btnName in btnNames:
-        b = FBButton()
-        b.Caption = btnName
-        buttonsLyt.Add(b, 100)
+
+    # Load JointMap button
+    btn = FBButton()
+    btn.Caption = "Load"
+    btn.Justify = FBTextJustify.kFBTextJustifyCenter
+    btn.OnClick.Add(loadBtnCallback)
+    buttonsLyt.Add(btn,60)
+
+    # Save JointMap button
+    btn = FBButton()
+    btn.Caption = "Save"
+    btn.Justify = FBTextJustify.kFBTextJustifyCenter
+    btn.OnClick.Add(saveBtnCallback)
+    buttonsLyt.Add(btn,60)
+
+    # SaveAs JointMap button
+    btn = FBButton()
+    btn.Caption = "SaveAs"
+    btn.Justify = FBTextJustify.kFBTextJustifyCenter
+    btn.OnClick.Add(saveAsBtnCallback)
+    buttonsLyt.Add(btn,60)
+
+    # Clear JointMap button
+    btn = FBButton()
+    btn.Caption = "Clear"
+    btn.Justify = FBTextJustify.kFBTextJustifyCenter
+    btn.OnClick.Add(clearBtnCallback)
+    buttonsLyt.Add(btn,60)
+
+    # update from skeleton JointMap button
+    btn = FBButton()
+    btn.Caption = "Update from Skeleton"
+    btn.Justify = FBTextJustify.kFBTextJustifyCenter
+    btn.OnClick.Add(updateFromSkeletonBtnCallback)
+    buttonsLyt.Add(btn,140)
+
+    # Add joint to JointMap button
+    btn = FBButton()
+    btn.Caption = "Add Joint"
+    btn.Justify = FBTextJustify.kFBTextJustifyCenter
+    btn.OnClick.Add(addJointBtnCallback)
+    buttonsLyt.Add(btn,80)
+
+    # Remove joint to JointMap button
+    btn = FBButton()
+    btn.Caption = "Remove Joint"
+    btn.Justify = FBTextJustify.kFBTextJustifyCenter
+    btn.OnClick.Add(removeJointBtnCallback)
+    buttonsLyt.Add(btn,80)
+
+    # Rename joint button
+    btn = FBButton()
+    btn.Caption = "Rename Joint"
+    btn.Justify = FBTextJustify.kFBTextJustifyCenter
+    btn.OnClick.Add(renameJointBtnCallback)
+    buttonsLyt.Add(btn,80)
+
     JMLayout.SetControl("buttons", buttonsLyt)
 
     ### Spreadsheet ###
@@ -689,6 +817,7 @@ def populateTool(mainLyt):
     spread.Caption = "Joints"
     JMLayout.SetControl("spreadContent", spread)
 
+    # TODO update jointMap
     #spread.OnCellChange.Add(OnSpreadEvent)
 
     updateSpreadSheet(spread)
@@ -775,10 +904,7 @@ def populateTool(mainLyt):
     tab.SetContent(0)
     tab.TabPanel.TabStyle = 0 # normal tabs
 
-# Update SpreadSheet
-def updateSpreadSheet(spread):
-    global jointMap
-
+def spreadInit(spread):
     # Delete the previous content.
     spread.Clear()
 
@@ -798,7 +924,13 @@ def updateSpreadSheet(spread):
     spread.ColumnAdd("rel. Z")
     spread.GetColumn(6).Width = 60
 
-    # Get data from jointMap
+# Update SpreadSheet
+def updateSpreadSheet(spread):
+    global jointMap
+
+    spreadInit(spread)
+
+    # Get data from jointMap in alphabetical order
     rowRefIndex = 0
     for jointName in sorted(jointMap.keys()):
         # Add a joint.
@@ -831,7 +963,7 @@ def createTool():
     # Tool creation will serve as the hub for all other controls.
     tool = FBCreateUniqueTool("Motion Capture Skeleton Setup")
     tool.StartSizeX = 762
-    tool.StartSizeY = 610
+    tool.StartSizeY = 585
     populateTool(tool)
     ShowTool(tool)
 
