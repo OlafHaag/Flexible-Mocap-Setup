@@ -301,7 +301,6 @@ def createSkeleton(pNamespace):
     return skeleton
 
 # Characterize the skeleton and create a control rig.
-# TODO Check if there's a skeleton in that namespace
 def characterizeSkeleton(pCharacterName, pSkeleton, pControlRig = False):
     # If there is no namespace with pCharacterName, show warning and abort
     if not FBSystem().Scene.NamespaceExist(pCharacterName):
@@ -572,7 +571,7 @@ def populateTool(mainLyt):
         # Save path for later use with Save button.
         configFullFilename = lFp.FullFilename
         saveJointMap(lFp.FullFilename)
-        
+
         # Cleanup.
         del( lFp, lRes)
 
@@ -585,9 +584,28 @@ def populateTool(mainLyt):
     def updateFromSkeletonBtnCallback(control, event):
         print control.Caption
 
-    #TODO
     def addJointBtnCallback(control, event):
-        print control.Caption
+        # Note that the last params of FBMessageBoxGetUserValue indicates if the last button act as a cancel button.
+        # The result from the call will be a tuple containing the index of the button pressed (or -1 in case of error).
+        # The second element will be the value entered.
+        btn, newJoint = FBMessageBoxGetUserValue("Name Joint","Enter name:", "", FBPopupInputType.kFBPopupString,"Ok","Cancel", None, 1, True)
+        if btn == 1:
+            # Joints must have unique names.
+            while (newJoint in jointMap) or (newJoint == ''):
+                if newJoint in jointMap:
+                    FBMessageBox("Message", "There's already a joint with that name.\nChoose a unique name.", "Ok")
+                    btn, newJoint = FBMessageBoxGetUserValue("Name Joint","Enter name:", "", FBPopupInputType.kFBPopupString,"Ok","Cancel", None, 1, True)
+                    if btn != 1:
+                        return
+                if newJoint == '':
+                    FBMessageBox("Message", "Name can't be blank!\nChoose a unique name.", "Ok")
+                    btn, newJoint = FBMessageBoxGetUserValue("Name Joint","Enter name:", "", FBPopupInputType.kFBPopupString,"Ok","Cancel", None, 1, True)
+                    if btn != 1:
+                        return
+
+            newEntry = {newJoint: (None, None, None, 0, ( 0, 0, 0))}
+            jointMap.update(newEntry)
+            updateSpreadSheet(spread)
 
     # Remove the selected joint from jointMap and spreadsheet.
     def removeJointBtnCallback(control, event):
@@ -608,12 +626,18 @@ def populateTool(mainLyt):
         # The second element will be the value entered.
         btn, newName = FBMessageBoxGetUserValue("Rename Joint","Enter new name:", "", FBPopupInputType.kFBPopupString,"Ok","Cancel", None, 1, True)
         if btn == 1:
-            # Joints must have unique names.
-            if newName in jointMap:
-                FBMessageBox("Message", "There's already a joint with that name.\nChoose a unique name.", "Ok")
-                btn, newName = FBMessageBoxGetUserValue("Rename Joint","Enter new name:", "", FBPopupInputType.kFBPopupString,"Ok","Cancel", None, 1, True)
-                if btn != 1:
-                    return
+            # Joints must have unique names and can't be empty.
+            while (newName in jointMap) or (newName == ''):
+                if newName in jointMap:
+                    FBMessageBox("Message", "There's already a joint with that name.\nChoose a unique name.", "Ok")
+                    btn, newName = FBMessageBoxGetUserValue("Rename Joint","Enter new name:", "", FBPopupInputType.kFBPopupString,"Ok","Cancel", None, 1, True)
+                    if btn != 1:
+                        return
+                if newName == '':
+                    FBMessageBox("Message", "Name can't be blank!\nChoose a unique name.", "Ok")
+                    btn, newName = FBMessageBoxGetUserValue("Name Joint","Enter name:", "", FBPopupInputType.kFBPopupString,"Ok","Cancel", None, 1, True)
+                    if btn != 1:
+                        return
 
             # Update the jointMap.
             for joint, values in jointMap.iteritems():
