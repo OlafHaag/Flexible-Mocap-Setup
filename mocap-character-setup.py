@@ -117,25 +117,20 @@ jointMap = {
     'Head':         ('Neck',        [0,1,2,3],  [0,1,2,3],  0,  (  0,   15.3,  2.7))
 }
 
-# Loading a skeleton template from a config file to generate new jointMap.
-def loadJointMap(fileName = None, pPath = None):
-    global jointMap
-    # If no filename is given, return and use default jointMap.
-    if fileName == None:
-        return
+# global variable to hold path to jointMap configFile.
+# Tried to avoid global variable for this, but couldn't find a solution.
+configFullFilename = ''
 
-    if pPath == None:
-        print("No path set. Looking into MotionBuilders default config folder.")
-        pPath = ""
-    else:
-        pPath += "\\"
-    filePath = pPath + fileName
-    if not os.path.isfile(filePath) and pPath != "":
+# Loading a skeleton template from a config file to generate new jointMap.
+def loadJointMap(fullFilename = None):
+    global jointMap
+
+    # If file does not exist, return and use default jointMap.
+    if not os.path.isfile(fullFilename):
         FBMessageBox("Waring","%s << This file does not exist. Using default settings." % filePath, "Ok")
         return
 
-    # File is created if it does not exist.
-    configFile = FBConfigFile(pPath + fileName)
+    configFile = FBConfigFile(fullFilename)
 
     # Get all the joint names that make up the skeleton.
     jointList = []
@@ -161,12 +156,12 @@ def loadJointMap(fileName = None, pPath = None):
 
         # Get the markers used for estimation of that joint's position into a list of integers.
         estimators = configFile.Get("Joint." + joint, "Estimators")
-        if estimators:
+        if estimators != None and estimators != 'None':
             estimators = [int(m) for m in estimators.split(',') if m.strip()]
 
         # Get the markers used for driving that joint into a list of integers.
         drivers = configFile.Get("Joint." + joint, "Drivers")
-        if drivers:
+        if drivers != None and drivers != 'None':
             drivers = [int(m) for m in drivers.split(',') if m.strip()]
 
         # Convert string to tuple of floats.
@@ -185,6 +180,26 @@ def loadJointMap(fileName = None, pPath = None):
         # Form a key-value-pair that gets inserted into the jointMap.
         dicEntry = {joint: (parentJoint, estimators, drivers, constraint, defaultTranslation)}
         jointMap.update(dicEntry)
+
+# Save the jointMap into a configuration file.
+def saveJointMap(fullFilename = None):
+    # File is created if it does not exist.
+    configFile = FBConfigFile(fullFilename)
+
+    # In case a file is being overwritten.
+    configFile.ClearFile()
+
+    # Write the values of each joint in the jointMap to file.
+    i = 0
+    for joint,values in jointMap.iteritems():
+        # Also save all joint names in a list, so we later know which sections there are when loading the jointMap.
+        configFile.Set('Joints', "Joint%d" % i, joint)
+        i += 1
+        configFile.Set('Joint.%s' % joint, 'Parent', str(values[0]))
+        configFile.Set('Joint.%s' % joint, 'Estimators', str(values[1]).strip('[]'))
+        configFile.Set('Joint.%s' % joint, 'DefaultTranslation', ", ".join(str(t) for t in values[4]))
+        configFile.Set('Joint.%s' % joint, 'Drivers', str(values[2]).strip('[]'))
+        configFile.Set('Joint.%s' % joint, 'ContraintType', str(values[3]))
 
 # Positions need to be relative to parent joint! Relative translation = child vector - parent vector
 # Somehow compute estimation of joint position from its rigid body animation.
@@ -448,29 +463,6 @@ def populateTool(mainLyt):
     # Hack to use outer scope for characterName, because in Python 2.x there's no nonlocal keyword.
     OnCharacterNameChange.characterName = 'MocapSkeleton'
 
-    def loadBtnCallback(control, event):
-        # Create the file-open popup and set necessary initial values.
-        lFp = FBFilePopup()
-        lFp.Caption = "Select a Joint-Map configuration file."
-        lFp.Style = FBFilePopupStyle.kFBFilePopupOpen
-
-        # BUG: If we do not set the filter, we will have an exception.
-        lFp.Filter = "*"
-
-        # Set the default path.
-        lFp.Path = FBSystem().UserConfigPath
-
-        # Get the GUI to show.
-        lRes = lFp.Execute()
-
-        # First update the jointMap dictionary, then update the display.
-        loadJointMap(lFp.FileName, lFp.Path)
-        updateSpreadSheet(spread)
-
-        # Cleanup.
-        #del( lFp, lRes, FBFilePopup, FBFilePopupStyle, FBMessageBox )
-        del( lFp, lRes)
-
     def estimateBtnCallback(control, event):
         # If we find enough markers, adjust joint positions.
         if getMarkers():
@@ -519,15 +511,70 @@ def populateTool(mainLyt):
             # Hack to use outer scope for bControlRig, because in Python 2.x there's no nonlocal keyword.
     controlRigRadioBtnCallback.bControlRig = False
 
-    #TODO
+    # Load a jointMap from file.
+    def loadBtnCallback(control, event):
+        global configFullFilename
+        # Create the file-open popup and set necessary initial values.
+        lFp = FBFilePopup()
+        lFp.Caption = "Select a Joint-Map configuration file."
+        lFp.Style = FBFilePopupStyle.kFBFilePopupOpen
+
+        # BUG: If we do not set the filter, we will have an exception.
+        lFp.Filter = "*.txt"
+
+        # Set the default path.
+        lFp.Path = FBSystem().UserConfigPath
+
+        # Get the GUI to show.
+        lRes = lFp.Execute()
+
+        configFullFilename = lFp.FullFilename
+
+        # First update the jointMap dictionary, then update the display.
+        loadJointMap(lFp.FullFilename)
+        updateSpreadSheet(spread)
+
+        # Cleanup.
+        #del( lFp, lRes, FBFilePopup, FBFilePopupStyle, FBMessageBox )
+        del( lFp, lRes)
+
     # Save jointMap to file
     def saveBtnCallback(control, event):
-        print control.Caption
+        global configFullFilename
+        # If file does not exist, return and use default jointMap.
+        if not os.path.isfile(configFullFilename):
+            saveAsBtnCallback(control, event)
+        else:
+            saveJointMap(configFullFilename)
 
-    #TODO
     # Save jointMap to file with a different name
     def saveAsBtnCallback(control, event):
-        print control.Caption
+        global configFullFilename
+        # Create the file-save popup and set necessary initial values.
+        lFp = FBFilePopup()
+        lFp.Caption = "Save Joint-Map configuration file."
+        lFp.Style = FBFilePopupStyle.kFBFilePopupSave
+
+        # BUG: If we do not set a filter, we will have an exception.
+        lFp.Filter = "*.txt"
+
+        # Set the default path.
+        lFp.Path = FBSystem().UserConfigPath
+
+        # Get the GUI to show.
+        lRes = lFp.Execute()
+
+        # If no filename is given, return and display an error warning.
+        if lFp.FileName == None:
+            FBMessageBox("Warning","No file name was given. Aborted.", "Ok")
+            return
+
+        # Save path for later use with Save button.
+        configFullFilename = lFp.FullFilename
+        saveJointMap(lFp.FullFilename)
+        
+        # Cleanup.
+        del( lFp, lRes)
 
     # Clear the jointMap and initialize the spreadsheets columns
     def clearBtnCallback(control, event):
@@ -540,32 +587,6 @@ def populateTool(mainLyt):
 
     #TODO
     def addJointBtnCallback(control, event):
-        i = 1
-        print('Joint%d' in jointMap)
-        '''
-        # Add a joint.
-        spread.RowAdd('Joint%d' % i, rowRefIndex)
-        # Set the 1st cell of the joint to display parent joint name.
-        parentName = str(jointMap[jointName][0])
-        spread.SetCellValue(rowRefIndex, 0, parentName)
-        # Set the 2nd cell of the joint to show marker IDs for estimation.
-        estimators = str(jointMap[jointName][1]).strip('[]')
-        spread.SetCellValue(rowRefIndex, 1, estimators)
-        # Set the 3rd cell of the joint to show marker IDs for constraints.
-        drivers = str(jointMap[jointName][2]).strip('[]')
-        spread.SetCellValue(rowRefIndex, 2, drivers)
-        # Show the type of constraint in the 4th cell.
-        #TODO Radiobutton for 3 options
-        spread.GetSpreadCell(rowRefIndex,3).Style = FBCellStyle.kFBCellStyleInteger
-        spread.SetCellValue(rowRefIndex, 3, jointMap[jointName][3])
-        # Split the translation into 3 seperate columns (5th, 6th, 7th).
-        spread.GetSpreadCell(rowRefIndex,4).Style = FBCellStyle.kFBCellStyleDouble
-        spread.SetCellValue(rowRefIndex, 4, jointMap[jointName][4][0])
-        spread.GetSpreadCell(rowRefIndex,5).Style = FBCellStyle.kFBCellStyleDouble
-        spread.SetCellValue(rowRefIndex, 5, jointMap[jointName][4][1])
-        spread.GetSpreadCell(rowRefIndex,6).Style = FBCellStyle.kFBCellStyleDouble
-        spread.SetCellValue(rowRefIndex, 6, jointMap[jointName][4][2])
-        '''
         print control.Caption
 
     # Remove the selected joint from jointMap and spreadsheet.
@@ -576,8 +597,7 @@ def populateTool(mainLyt):
         print row.Caption, 'was removed from joint map.'
         row.Remove()
 
-    #TODO
-    # Rename selected joint and all of its occurences in column 'Parent'.
+    # Rename selected joint and all of its occurences as a parent.
     def renameJointBtnCallback(control, event):
         i = spread.Row
         row = spread.GetRow(i)
@@ -586,10 +606,28 @@ def populateTool(mainLyt):
         # Note that the last params of FBMessageBoxGetUserValue indicates if the last button act as a cancel button.
         # The result from the call will be a tuple containing the index of the button pressed (or -1 in case of error).
         # The second element will be the value entered.
-        btn, value = FBMessageBoxGetUserValue("Rename Joint","Enter new name:", "", FBPopupInputType.kFBPopupString,"Ok","Cancel", None, 1, True)
+        btn, newName = FBMessageBoxGetUserValue("Rename Joint","Enter new name:", "", FBPopupInputType.kFBPopupString,"Ok","Cancel", None, 1, True)
         if btn == 1:
-            row.Caption = value
+            # Joints must have unique names.
+            if newName in jointMap:
+                FBMessageBox("Message", "There's already a joint with that name.\nChoose a unique name.", "Ok")
+                btn, newName = FBMessageBoxGetUserValue("Rename Joint","Enter new name:", "", FBPopupInputType.kFBPopupString,"Ok","Cancel", None, 1, True)
+                if btn != 1:
+                    return
 
+            # Update the jointMap.
+            for joint, values in jointMap.iteritems():
+                # Rename the joint when it occurs as a parent.
+                if values[0] == oldName:
+                    parentName, estimators, drivers, constraintType, translation = values
+                    jointMap[joint] = (newName, estimators, drivers, constraintType, translation)
+                if joint == oldName:
+                    newEntry = {newName: jointMap[joint]}
+                    del jointMap[joint]
+                    jointMap.update(newEntry)
+
+            # Now redo the spreadsheet.
+            updateSpreadSheet(spread)
 
     '''*************#
     # Create Layout #
