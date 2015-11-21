@@ -30,9 +30,10 @@ import os.path
 
 '''---MARKER FUNCTIONS AND VARIABLES---'''
 # List of optical markers
-markerList = []
+opticalMarkers = []
+virtualMarkers = []
 # Frame that holds the reference pose, chosen by the user (current frame).
-referenceFrame = FBSystem().LocalTime.GetFrame()
+#referenceFrame = FBSystem().LocalTime.GetFrame()
 
 # Get position FBVector3d from FBModel m.
 def vector(m):
@@ -68,7 +69,7 @@ def selectMarkers(root):
 
 # Collect markers and check count.
 def getMarkers():
-    global markerList
+    global opticalMarkers
     # Obtain markers from scene.
     markers = FBModelList()
     selectMarkers(FBSystem().Scene.RootModel)
@@ -76,9 +77,9 @@ def getMarkers():
     # Reverse marker list, so that M000 is first and so on.
     mCount = markers.GetCount()
     mIndex = mCount - 1
-    markerList = []
+    opticalMarkers = []
     for i in range(mCount):
-        markerList.append(markers[mIndex - i])
+        opticalMarkers.append(markers[mIndex - i])
     # Check if enough markers were found.
     suitMarkers = 38
     if len(markers) < suitMarkers:
@@ -86,6 +87,35 @@ def getMarkers():
         return False
     else:
         return True
+
+# Virtual Markers will be used to drive the skeleton. They are subject of predictions where markers should be in case of occlusion.
+# TODO BUG When Timesleider is moved, vMarkers snap to origin. Probably due to missing animation data.
+def createVirtualMarkers(opticalMarkers):
+    global virtualMarkers
+
+    # Create a root for the virtual markers.
+    vMarkersRoot = FBModelOptical('vMarkers')
+    # Make duplicates of the optical Markers to serve as virtual markers.
+    for optMarker in opticalMarkers:
+        name = 'virtual' + optMarker.Name
+        vMarker = FBModelMarkerOptical(name, vMarkersRoot)
+        # For starters, set the positions of the virtual markers to the same coordinates as the corresponding optical marker.
+        vMarker.Translation = FBVector3d(optMarker.Translation)
+        vMarker.Color = FBColor(255,0,255)
+        vMarker.Show = True
+        # We'll probably use FCurves for animating these, so set them to done.
+        # If we'll use segments, set this to False or comment it out.
+        # Or maybe we'll just set the translation at every frame?
+        #vMarker.Done = True
+        virtualMarkers.append(vMarker)
+
+    if len(opticalMarkers) > 0:
+        # We want the virtual Markers to be in the same namespace. Get every string seperated by ':' from the LongName.
+        nameParts = opticalMarkers[0].LongName.split(':')
+        # Now put everything back together without the Name of the marker to get the namespace.
+        # This allows for ':' in the namespace.
+        nameSpace = (':').join(nameParts[0:-1])
+    vMarkersRoot.ProcessNamespaceHierarchy(FBNamespaceAction.kFBConcatNamespace, nameSpace)
 
 
 '''---ESTIMATE JOINTS---'''
@@ -113,7 +143,7 @@ jointMap = {
     'RightForeArm': ('RightArm',    [19,20],    [19,20],    2,  (-26.2,   0,  -1.7)),
     'RightHand':    ('RightForeArm',[21,22,23], [21,22,23], 0,  (-26.5,   0,   0.4)),
     'RightFingerBase':('RightHand', [22,23],    None,       0,  (-10.55,  0,  1.04)),
-    'Neck':         ('Spine',       [6,10,17],  [6,10,17],  2,  (     0,20.5,    0)),
+    'Neck':         ('Spine',       [6,10,17],  [6],        1,  (     0,20.5,    0)),
     'Head':         ('Neck',        [0,1,2,3],  [0,1,2,3],  0,  (  0,   15.3,  2.7))
 }
 
@@ -203,16 +233,19 @@ def saveJointMap(fullFilename = None):
 
 # Positions need to be relative to parent joint! Relative translation = child vector - parent vector
 # Somehow compute estimation of joint position from its rigid body animation.
+# TODO!
 def getJointEstimations():
-    global markerList, jointMap
+    global opticalMarkers, jointMap
+    global virtualMarkers
 
     ### Reference joint is a special case, since it has no parent ###
     # We want the Reference joint to be on the floor, centered beneath the hips.
 
     # Get markers that correspond to jointMap estimators indices.
     estimators = []
+    # Just calculate the position of the reference joint for now. It's on the floor beneath hips' center.
     for m in jointMap['Hips'][1]:
-        estimators.append(markerList[m])
+        estimators.append(opticalMarkers[m])
     if len(estimators) > 0:
         # Find center of hips.
         hips_center = findCenter(estimators)
@@ -230,8 +263,35 @@ def getJointEstimations():
     # Output should be a dictionary with each jointName: estimated position.
     jointEstimations = {'Reference': referencePos}
 
+    # For each optical marker create a virtual marker which position will be estimated.
+    createVirtualMarkers(opticalMarkers)
+
     '''
-    INSERT JOINT ESTIMATION CODE HERE
+    -------------------------------------
+    - INSERT JOINT ESTIMATION CODE HERE -
+    -------------------------------------
+
+    ###############
+    # Maybe useful:
+    ###############
+    # Working with Timeslider
+    # Get the frame range of the current take.
+    FBSystem().CurrentTake.LocalTimeSpan.GetStart().GetFrame(True)
+    FBSystem().CurrentTake.LocalTimeSpan.GetStop().GetFrame(True)
+    # Scrub to frame 44.
+    f = 44
+    t = FBTime(0, 0, 0, f, 0)
+    FBPlayerControl().Goto(t)
+    # Get the current playback framerate.
+    FBPlayerControl().GetTransportFps() # Returns the FBTimeMode value
+    FBPlayerControl().GetTransportFpsValue() # Returns the actual FPS value
+    # Set the playback framerate to 60 fps
+    FBPlayerControl().SetTransportFps(FBTimeMode.kFBTimeMode60Frames)
+
+    # Setting data to marker
+    markerAnimNode = FBAnimationNode()
+    virtualMarkers[0].InsertSegmentedData(markerAnimNode) # or so...
+
     '''
     return jointEstimations
 
@@ -389,10 +449,9 @@ def applyModelToSkeleton(pSkeleton, pModel):
         model.Translation = FBVector3d(0, 0, 0)
 
 '''---CONNECT MARKERS TO THE SKELETON---'''
-# In the end we still need to connect the markers with the skeleton.
-# This is done by loading a previously saved mapping from file.
-def applyCharacterMapping(pCharacter = FBApplication().CurrentCharacter):
-    global markerList
+# In the end we still need to connect the virtual markers with the skeleton.
+def applyCharacterMapping(pCharacter = FBApplication().CurrentCharacter, pUseVirtualMarkers = False):
+    global opticalMarkers, virtualMarkers
     global jointMap
 
     if pCharacter == None:
@@ -425,7 +484,13 @@ def applyCharacterMapping(pCharacter = FBApplication().CurrentCharacter):
                 markerModelList = []
                 for listIndex in range(len(driverList)):
                     driverID = driverList[listIndex]
-                    markerModel = markerList[driverID]
+                    if pUseVirtualMarkers:
+                        if len(virtualMarkers) == 0:
+                            FBMessageBox("Warning","There are no virtual markers for interpolation. Aborted.", "Ok")
+                            return
+                        markerModel = virtualMarkers[driverID]
+                    else:
+                        markerModel = opticalMarkers[driverID]
                     if markerModel:
                         markerModelList.append(markerModel)
 
@@ -462,6 +527,25 @@ def populateTool(mainLyt):
     # Hack to use outer scope for characterName, because in Python 2.x there's no nonlocal keyword.
     OnCharacterNameChange.characterName = 'MocapSkeleton'
 
+    # These are all the setup steps in one sweep instead of manual setup, a one-click solution.
+    #TODO A lot has changed, check if this is still functional.
+    def automaticBtnCallback(control, event):
+        if getMarkers():
+            jointEstimations = getJointEstimations()
+            updateJointMapTranslations(jointEstimations)
+            updateSpreadSheet(spread)
+
+            skeleton = createSkeleton(OnCharacterNameChange.characterName)
+            # Apply a model to each limb of the skeleton.
+            templateModel = createModel()
+            applyModelToSkeleton(skeleton, templateModel)
+            templateModel.FBDelete() # We do not need the template model anymore.
+
+            # Characterize the skeleton and create a control rig if chosen.
+            character = characterizeSkeleton(OnCharacterNameChange.characterName, skeleton, controlRigRadioBtnCallback.bControlRig)
+            # Setup the markers (either predicted virtual or original optical data) as constraints for the joints according to the jointMap drivers
+            applyCharacterMapping(FBApplication().CurrentCharacter, useVirtualMarkersBtnCallback.bUseVirtualMarkers)
+
     def estimateBtnCallback(control, event):
         # If we find enough markers, adjust joint positions.
         if getMarkers():
@@ -483,24 +567,21 @@ def populateTool(mainLyt):
         # Characterize the skeleton and create a control rig.
         character = characterizeSkeleton(OnCharacterNameChange.characterName, createBtnCallback.skeleton, controlRigRadioBtnCallback.bControlRig)
 
+    def useVirtualMarkersBtnCallback(control, event):
+        if control.Caption == "Yes":
+            useVirtualMarkersBtnCallback.bUseVirtualMarkers = True
+        else:
+            useVirtualMarkersBtnCallback.bUseVirtualMarkers = False
+            # Hack to use outer scope for bUseVirtualMarkers, because in Python 2.x there's no nonlocal keyword.
+    useVirtualMarkersBtnCallback.bUseVirtualMarkers = False
+
     def mappingBtnCallback(control, event):
         # Setup the markers as constraints for the joints according to the jointMap drivers
         # Make sure there are markers.
         if getMarkers():
-            applyCharacterMapping(FBApplication().CurrentCharacter)
+            # TODO Set Bool to choice.
+            applyCharacterMapping(FBApplication().CurrentCharacter, useVirtualMarkersBtnCallback.bUseVirtualMarkers)
 
-    def automaticBtnCallback(control, event):
-        if getMarkers():
-            skeleton = createSkeleton(OnCharacterNameChange.characterName)
-            # Apply a model to each limb of the skeleton.
-            templateModel = createModel()
-            applyModelToSkeleton(skeleton, templateModel)
-            templateModel.FBDelete() # We do not need the template model anymore.
-
-            # Characterize the skeleton and create a control rig.
-            character = characterizeSkeleton(OnCharacterNameChange.characterName, skeleton, False)
-            # Setup the markers as constraints for the joints according to the jointMap drivers
-            applyCharacterMapping(FBApplication().CurrentCharacter)
 
     def controlRigRadioBtnCallback(control, event):
         if control.Caption == "Yes":
@@ -575,7 +656,7 @@ def populateTool(mainLyt):
         # Cleanup.
         del( lFp, lRes)
 
-    # Clear the jointMap and initialize the spreadsheets columns
+    # Clear the jointMap and initialize the spreadsheet's columns
     def clearBtnCallback(control, event):
         jointMap.clear()
         spreadInit(spread)
@@ -656,7 +737,6 @@ def populateTool(mainLyt):
     '''*************#
     # Create Layout #
     #*************'''
-
     # We will use a tabbed layout.
     tab = FBTabControl()
 
@@ -710,15 +790,11 @@ def populateTool(mainLyt):
     btn.OnClick.Add(automaticBtnCallback)
 
     # Instruction for manual setup.
-    #row = FBHBoxLayout(FBAttachType.kFBAttachLeft)
-    #row.AddRelative(None)
     labManual = FBLabel()
     labManual.Caption = "\nManual Setup:"
     labManual.Justify = FBTextJustify.kFBTextJustifyLeft
     labManual.Style = FBTextStyle.kFBTextStyleUnderlined
     labManual.WordWrap = True
-    #row.Add(lab1, 100)
-    #row.AddRelative(None)
     tasksLayout.Add(labManual,35)
 
     # Load JointMap button
@@ -749,49 +825,77 @@ def populateTool(mainLyt):
     labInstruction.WordWrap = True
     tasksLayout.Add(labInstruction,20)
 
-    # Radio Buttons for manual or automatic setup.
+    # Characterize button
+    btn = FBButton()
+    btn.Caption = "5. Characterize Skeleton"
+    btn.Justify = FBTextJustify.kFBTextJustifyLeft
+    btn.OnClick.Add(characterizeBtnCallback)
+
+    # Radio Buttons for Yes/No to ControlRig.
     group = FBButtonGroup()
     group.AddCallback(controlRigRadioBtnCallback)
 
-    # First button manual
-    rBtnName = "ControlRig"
+    # First button: Yes
     rbtn1 = FBButton()
     rbtn1.Caption = "Yes"
     rbtn1.Style = FBButtonStyle.kFBRadioButton
     rbtn1.State = controlRigRadioBtnCallback.bControlRig
     group.Add(rbtn1)
 
-    # Second button automatic
-    rBtnName = "NoRig"
+    # Second button: No
     rbtn2 = FBButton()
     rbtn2.Caption = "No"
     rbtn2.Style = FBButtonStyle.kFBRadioButton
     rbtn2.State = not controlRigRadioBtnCallback.bControlRig
     group.Add(rbtn2)
 
+    # Put these into 1 row, because they belong together.
     row = FBHBoxLayout(FBAttachType.kFBAttachLeft)
     labCtrlRig = FBLabel()
-    labCtrlRig.Caption = "Generate Control Rig:"
+    labCtrlRig.Caption = "\n\nGenerate Control Rig:"
     labCtrlRig.Justify = FBTextJustify.kFBTextJustifyLeft
     labCtrlRig.WordWrap = True
+    row.Add(btn, 200)
     row.Add(labCtrlRig, 120)
     row.Add(rbtn1, 50)
     row.Add(rbtn2, 50)
-    tasksLayout.Add(row,20)
-
-    # Characterize button
-    btn = FBButton()
-    btn.Caption = "5. Characterize Skeleton"
-    btn.Justify = FBTextJustify.kFBTextJustifyLeft
-    tasksLayout.Add(btn,60)
-    btn.OnClick.Add(characterizeBtnCallback)
+    tasksLayout.Add(row,60)
 
     # Character Mapping button
     btn = FBButton()
     btn.Caption = "6. Map Markers onto current character"
     btn.Justify = FBTextJustify.kFBTextJustifyLeft
-    tasksLayout.Add(btn,60)
     btn.OnClick.Add(mappingBtnCallback)
+
+    # Radio Buttons for using predicted virtual or original optical data.
+    group = FBButtonGroup()
+    group.AddCallback(useVirtualMarkersBtnCallback)
+
+    # First button: virtual
+    rbtn1 = FBButton()
+    rbtn1.Caption = "Yes"
+    rbtn1.Style = FBButtonStyle.kFBRadioButton
+    rbtn1.State = useVirtualMarkersBtnCallback.bUseVirtualMarkers
+    group.Add(rbtn1)
+
+    # Second button: optical
+    rbtn2 = FBButton()
+    rbtn2.Caption = "No"
+    rbtn2.Style = FBButtonStyle.kFBRadioButton
+    rbtn2.State = not useVirtualMarkersBtnCallback.bUseVirtualMarkers
+    group.Add(rbtn2)
+
+    # Put these into 1 row, because they belong together.
+    row = FBHBoxLayout(FBAttachType.kFBAttachLeft)
+    labvMarkers = FBLabel()
+    labvMarkers.Caption = "\n\nUse virtual (predicted) Markers:"
+    labvMarkers.Justify = FBTextJustify.kFBTextJustifyLeft
+    labvMarkers.WordWrap = True
+    row.Add(btn, 200)
+    row.Add(labvMarkers, 120)
+    row.Add(rbtn1, 50)
+    row.Add(rbtn2, 50)
+    tasksLayout.Add(row,60)
 
     tab.Add(tabName,scrollTasksLyt)
 
@@ -880,6 +984,9 @@ def populateTool(mainLyt):
     JMLayout.SetControl("spreadContent", spread)
 
     # TODO update jointMap
+    # TODO If a joint in the parent column is set, check, if the is such a joint in the jointMap.
+    # TODO If the values of the translations are changed, after a skeleton has been created, move joints accordingly.
+    # TODO Replace ConstraintType on exising Mapping if changed. Same with changing drivers.
     #spread.OnCellChange.Add(OnSpreadEvent)
 
     updateSpreadSheet(spread)
