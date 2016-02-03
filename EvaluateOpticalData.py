@@ -72,30 +72,49 @@ def evaluateOpticalData(opticalModel):
         #TODO: If gap is before end of take, add it.
 
     # Compute results and put them in a Dictionary.
+    gapCounts = []
+    meanGapLengths = []
+    maxGapLengths = []
+    missingDataList = []
     for marker in markerGaps:
         gapCount = len(markerGaps[marker])
+        gapCounts.append(gapCount)
         absoluteGapLength = sum(markerGaps[marker])
         if gapCount > 0:
             meanGapLength =  absoluteGapLength / gapCount
+            meanGapLengths.append(meanGapLength)
             maxGapLength = max(markerGaps[marker])
+            maxGapLengths.append(maxGapLength)
         else:
             meanGapLength = 0.0
             maxGapLength = 0.0
 
         # relative amount of missing data
         missingData = absoluteGapLength / takeDuration
+        missingDataList.append(missingData)
 
         # Update Dictionary
         entry = {marker: [gapCount, meanGapLength, maxGapLength, missingData]}
         markerData.update(entry)
 
+    totalGapCount = sum(gapCounts)
+    if len(markerGaps) > 0:
+        totalMeanGapLength = sum(meanGapLengths)/len(markerGaps)
+        maxGapLength = max(maxGapLengths)
+        totalMissingData = sum(missingDataList)/len(missingDataList)
+    entry = {'Total': [totalGapCount, totalMeanGapLength, maxGapLength, totalMissingData]}
+    markerData.update(entry)
 
 ###############################################################
 # Main.                                                       #
 ###############################################################
 def main():
-    if FBSystem().Scene.ModelOpticals > 0:
+    global markerData
+    if len(FBSystem().Scene.ModelOpticals) > 0:
         evaluateOpticalData(FBSystem().Scene.ModelOpticals[0])
+        print("marker: [gapCount, meanGapLength, maxGapLength, missingData]")
+        for marker,data in sorted(markerData.iteritems()):
+            print(marker,data)
     else:
         FBMessageBox("Message", "No optical model found. Import optical data first.", "Ok")
 
@@ -104,7 +123,3 @@ def main():
 if __name__ in ('__main__', '__builtin__'):
 
     main()
-
-    print("marker: [gapCount, meanGapLength, maxGapLength, missingData]")
-    for marker,data in sorted(markerData.iteritems()):
-        print(marker,data)
