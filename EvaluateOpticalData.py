@@ -4,12 +4,17 @@
 # USAGE:
 # 1. Import C3D file
 # 2. Execute the script within MotionBuilder
+# 3. Output will be in the python console for the time being
+#
+# TODO This script executes really slow and ideally has to be optimized.
 #***************************************************************************************
 
 # Import MotionBuilder libraries
 from pyfbsdk import *
 #from pyfbsdk_additions import *
 
+'''
+# For later use to get a better comprehension where the markers belong on our suit
 topologyMap = {
     #Body part:     [Markers]
     'Hips':         ["M008","M009","M030","M031"],
@@ -29,6 +34,7 @@ topologyMap = {
     'RightHand':    ["M021","M022","M023"],
     'Head':         ["M000","M001","M002","M003"]
 }
+'''
 
 # Will contain results of the evaluation
 markerData = {}
