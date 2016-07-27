@@ -28,6 +28,19 @@ import os.path
 # Helper Function(s).                                         #
 ###############################################################
 
+def is_empty(any_structure):
+    if any_structure:
+        return False
+    else:
+        return True
+
+def is_not_empty(any_structure):
+    if any_structure:
+        return True
+    else:
+        return False
+
+
 '''---MARKER FUNCTIONS AND VARIABLES---'''
 # List of optical markers
 opticalMarkers = []
@@ -109,7 +122,7 @@ def createVirtualMarkers(opticalMarkers):
         #vMarker.Done = True
         virtualMarkers.append(vMarker)
 
-    if len(opticalMarkers) > 0:
+    if is_not_empty(opticalMarkers):
         # We want the virtual Markers to be in the same namespace. Get every string seperated by ':' from the LongName.
         nameParts = opticalMarkers[0].LongName.split(':')
         # Now put everything back together without the Name of the marker to get the namespace.
@@ -173,7 +186,7 @@ def loadJointMap(fullFilename = None):
         else:
             break
 
-    if len(jointList) == 0:
+    if is_empty(jointList):
         FBMessageBox("Warning","No joints found in configuration file. Using defaults.", "Ok")
         return
 
@@ -246,7 +259,7 @@ def getJointEstimations():
     # Just calculate the position of the reference joint for now. It's on the floor beneath hips' center.
     for m in jointMap['Hips'][1]:
         estimators.append(opticalMarkers[m])
-    if len(estimators) > 0:
+    if is_not_empty(estimators):
         # Find center of hips.
         hips_center = findCenter(estimators)
 
@@ -289,7 +302,23 @@ def getJointEstimations():
     FBPlayerControl().SetTransportFps(FBTimeMode.kFBTimeMode60Frames)
 
     # Setting data to marker
+    # By setting its translation:
+    vMarker.Translation = FBVector3d(x, y, z) # Do this each frame as they come and then use the recording functions of MoBu (or not for live sessions)
+    # By FCurves:
+    vMarker = vMarkers[0]
+    vMarker.Translation.SetAnimated(True)
+    node = vMarker.Translation.GetAnimationNode()
+    fCurveX = node[0].FCurve
+    fCurveY = node[1].FCurve
+    fCurveZ = node[2].FCurve
+
+    fCurveX.KeyAdd(FBTime(0, 0, 0, currentframe), xTranslation) # Adds a key for xTranslation at current frame.
+    key = fCurveX.keys[n] # returns the key object with index n on that FCurve.
+    fCurveX.EditClear() # Removes all the keys.
+
+    # By Segments:
     markerAnimNode = FBAnimationNode()
+    #... Do something with AnimationNode
     virtualMarkers[0].InsertSegmentedData(markerAnimNode) # or so...
 
     '''
@@ -326,7 +355,7 @@ def createSkeleton(pNamespace):
         return
 
     # If there's no jointMap, show warning and abort
-    if len(jointMap) == 0:
+    if is_empty(jointMap):
         FBMessageBox("Warning","No skeleton definition.\nCreate or load Joint Map.", "Ok")
         return
 
@@ -485,7 +514,7 @@ def applyCharacterMapping(pCharacter = FBApplication().CurrentCharacter, pUseVir
                 for listIndex in range(len(driverList)):
                     driverID = driverList[listIndex]
                     if pUseVirtualMarkers:
-                        if len(virtualMarkers) == 0:
+                        if is_empty(virtualMarkers):
                             FBMessageBox("Warning","There are no virtual markers for interpolation. Aborted.", "Ok")
                             return
                         markerModel = virtualMarkers[driverID]
