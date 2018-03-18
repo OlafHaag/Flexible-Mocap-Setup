@@ -1,33 +1,39 @@
-# Mocap Character Setup
+# Flexible Mocap Setup
 
 ## *Python Script for Motionbuilder*
 
-This is my first attempt to write a python script for Motionbuilder, so it's up for optimization.
-
 ### About
 
-Its main purpose is to generate a skeleton that fits into recorded marker data by estimating the joints' positions. Ideally it should be able to deliver a one-click solution for setting up a character that fits into recorded marker data and which can then be used in subsequent live sessions with the same performer.
+Its main purpose is to quickly create a skeleton which joints' positions were fitted into recorded marker data *beforehand*.
 
 The motivation behind it is, that current available workflows of setting up a character for a virtual reality live session demand a high level of expertise, don't work well and simply are too time consuming.
 
-Furthermore, the script should avoid pitfalls of other proprietary solutions, that lack control over the process and outcome. That's why the script will enable:
+Furthermore, the script should avoid pitfalls of other proprietary solutions, that lack control over the process and outcome. That's why the script should enable:
 
-* custom humanoid skeletons (by setting up a "Joint Map")
-* adjusting joints after they're created
-* assign markers as 'drivers' (constraints) to joints (via "Joint Map" by using MoBu's flexible mocap workflow)
+* Easy setup.
+* Create custom skeletons (by setting up a »Skeleton Template«)
+* Apply estimated joint positions to the template.
+* Be able to make changes to the skeleton after creation.
+* Animate the skeleton by real-time optical marker stream by using MotionBuilder's flexible mocap workflow.
 
 What it will **not** provide any time soon and isn't planned:
 
-* spectral clustering of markers to form rigid bodies (that's still done "manually" via Joint Map; we have a few active markers in our setup, so there's no need for overkill)
-* generate arbitrary skeletons from data (we always use the same mocap suit, no animals, so we don't need that either)
+* Spectral clustering of markers to form rigid bodies automatically.
+* Estimating the joint positions from the marker data. We use other scripts for that and unfortunately, due to patenting reasons, I cannot share the code.
 
 But your're always welcome to fork the project and work on such things yourself.
 
-We are working on eliminating the necessity for a reference frame, the T-pose. But we will see about that. MotionBuilder might still need that for the characterization.
+### REQUIREMENTS:
+* *.c3d - recording of marker data.
+* *.csv - template topology for skeleton and marker-to-joint mappings.
+* *_offsets.csv - estimated offsets for joints and markers for specific performer-/session.
 
-### Usage
+optional:
+* *.txt - marker labels that match those in the skeleton template.
+* *.rbs - rigid body marker preset that matches the C3D file for stabilizing occluded markers.
+* *.xml - skeleton definition for character definition if your skeleton doesn't follow HIK naming conventions.
+* *.bvh - generated animation from the c3d file (with skeleton estimation scripts). Can serve as ground truth.
 
-Just drag script into the MotionBuilder view and execute. A user interface will open.
-More help will will be available once the main parts are done.
-
-*This script is part of a research project at the Philipps-University Marburg.*
+### USAGE:
+1. Import the C3D and optionally the corresponding BVH file (ground truth) into MotionBuilder.
+2. Execute the script within MotionBuilder and follow the steps

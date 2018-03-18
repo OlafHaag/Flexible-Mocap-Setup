@@ -1,0 +1,424 @@
+; FBX 6.0.0 project file
+; Copyright (C) 1997-2009 Autodesk Inc. and/or its licensors.
+; All rights reserved.
+; ----------------------------------------------------
+
+FBXHeaderExtension:  {
+    FBXHeaderVersion: 1003
+    FBXVersion: 6000
+    CreationTimeStamp:  {
+        Version: 1000
+        Year: 0
+        Month: 0
+        Day: 0
+        Hour: 0
+        Minute: 0
+        Second: 0
+        Millisecond: 0
+    }
+    Creator: "MotionBuilder version 16.5 build 06/21/2016"
+    OtherFlags:  {
+        FlagPLE: 0
+    }
+}
+CreationTime: "0000-00-00 00:00:00:000"
+Creator: "MotionBuilder version 16.5 build 06/21/2016"
+RIGIDBODYSET: "Model::C3D:optical" {
+    MARKERLIST:  {
+        MARKER:  {
+            NAME: "M000"
+            X: -7.77452207978173
+            Y: 181.442114959091
+            Z: 4.46834601793901
+        }
+        MARKER:  {
+            NAME: "M001"
+            X: 7.15015105602807
+            Y: 180.573607780659
+            Z: 2.4193243611461
+        }
+        MARKER:  {
+            NAME: "M002"
+            X: 4.47469167465271
+            Y: 174.46331545497
+            Z: -9.25269062932928
+        }
+        MARKER:  {
+            NAME: "M003"
+            X: -9.42241321551174
+            Y: 176.658336945485
+            Z: -4.20257931537995
+        }
+        MARKER:  {
+            NAME: "M004"
+            X: -0.291047650992656
+            Y: 144.563141795948
+            Z: 8.82486629093836
+        }
+        MARKER:  {
+            NAME: "M005"
+            X: 0.724276788608005
+            Y: 127.997267235982
+            Z: 12.7854836196583
+        }
+        MARKER:  {
+            NAME: "M006"
+            X: -0.724225833078793
+            Y: 152.317614507092
+            Z: -13.8762785760575
+        }
+        MARKER:  {
+            NAME: "M007"
+            X: -0.54933849687432
+            Y: 121.037410209691
+            Z: -12.2092290524609
+        }
+        MARKER:  {
+            NAME: "M008"
+            X: -12.6074655384856
+            Y: 107.667471952254
+            Z: -11.9516310457766
+        }
+        MARKER:  {
+            NAME: "M009"
+            X: 12.1222459832779
+            Y: 109.830472433427
+            Z: -10.6100880984656
+        }
+        MARKER:  {
+            NAME: "M010"
+            X: -7.0490985600814
+            Y: 154.164287888197
+            Z: 1.6172627888988
+        }
+        MARKER:  {
+            NAME: "M011"
+            X: 5.51011141128426
+            Y: 156.869585838279
+            Z: 2.81749266377707
+        }
+        MARKER:  {
+            NAME: "M012"
+            X: 16.2390282172797
+            Y: 152.236195318013
+            Z: -12.4776576780314
+        }
+        MARKER:  {
+            NAME: "M013"
+            X: -15.3162192282146
+            Y: 153.607936957685
+            Z: -13.206290652244
+        }
+        MARKER:  {
+            NAME: "M014"
+            X: 13.838099553269
+            Y: 161.296403230851
+            Z: -7.47644251341419
+        }
+        MARKER:  {
+            NAME: "M015"
+            X: 0
+            Y: 0
+            Z: 0
+        }
+        MARKER:  {
+            NAME: "M016"
+            X: 50.756131675884
+            Y: 159.010648292782
+            Z: -10.3322745170421
+        }
+        MARKER:  {
+            NAME: "M017"
+            X: 65.2119172051549
+            Y: 158.492058335339
+            Z: -9.84477900177512
+        }
+        MARKER:  {
+            NAME: "M018"
+            X: 75.5376492274119
+            Y: 157.944179349795
+            Z: -9.5205277816119
+        }
+        MARKER:  {
+            NAME: "M019"
+            X: 79.1754870721248
+            Y: 157.546645064322
+            Z: -7.22351818690792
+        }
+        MARKER:  {
+            NAME: "M020"
+            X: 77.3330932111394
+            Y: 156.511122770791
+            Z: -12.7895396023908
+        }
+        MARKER:  {
+            NAME: "M021"
+            X: -11.3647035623914
+            Y: 159.962052542967
+            Z: -7.83704792669527
+        }
+        MARKER:  {
+            NAME: "M022"
+            X: 0
+            Y: 0
+            Z: 0
+        }
+        MARKER:  {
+            NAME: "M023"
+            X: -49.6614294294296
+            Y: 157.793017884912
+            Z: -12.85719872255
+        }
+        MARKER:  {
+            NAME: "M024"
+            X: -63.2000604072236
+            Y: 157.186239222008
+            Z: -15.1804479525672
+        }
+        MARKER:  {
+            NAME: "M025"
+            X: -75.4698538725937
+            Y: 157.173683140279
+            Z: -13.9924455090553
+        }
+        MARKER:  {
+            NAME: "M026"
+            X: -78.6530503069534
+            Y: 156.500178098818
+            Z: -11.3810272191648
+        }
+        MARKER:  {
+            NAME: "M027"
+            X: -78.1945566075274
+            Y: 155.287806921108
+            Z: -16.9362666765361
+        }
+        MARKER:  {
+            NAME: "M028"
+            X: 11.5565113703268
+            Y: 5.10008865744971
+            Z: 6.62254705879576
+        }
+        MARKER:  {
+            NAME: "M029"
+            X: 4.52116270157049
+            Y: 5.98159849899074
+            Z: 8.48780263174602
+        }
+        MARKER:  {
+            NAME: "M030"
+            X: 5.96952380232656
+            Y: 8.97215288208545
+            Z: 0.876304735837689
+        }
+        MARKER:  {
+            NAME: "M031"
+            X: 10.6567475145094
+            Y: 15.9594551715369
+            Z: -10.8602040425561
+        }
+        MARKER:  {
+            NAME: "M032"
+            X: 15.4952949697963
+            Y: 41.5615100122797
+            Z: -5.46900354237903
+        }
+        MARKER:  {
+            NAME: "M033"
+            X: 7.93629764978519
+            Y: 65.7130158413436
+            Z: 6.4288338555784
+        }
+        MARKER:  {
+            NAME: "M034"
+            X: 15.4116375482126
+            Y: 108.329614574184
+            Z: 4.42477754670451
+        }
+        MARKER:  {
+            NAME: "M035"
+            X: 17.5560112882449
+            Y: 83.6495281104605
+            Z: 1.6626768316705
+        }
+        MARKER:  {
+            NAME: "M036"
+            X: -16.4705019761657
+            Y: 105.674950552297
+            Z: 1.99730305816874
+        }
+        MARKER:  {
+            NAME: "M037"
+            X: -10.7345077698175
+            Y: 66.3191719623208
+            Z: 5.68369163296538
+        }
+        MARKER:  {
+            NAME: "M038"
+            X: -14.8179599631891
+            Y: 40.4093108038022
+            Z: -1.17458397525999
+        }
+        MARKER:  {
+            NAME: "M039"
+            X: -11.7696665030144
+            Y: 13.4486862491449
+            Z: -6.31750433444645
+        }
+        MARKER:  {
+            NAME: "M040"
+            X: -7.64698001153755
+            Y: 9.78044389375087
+            Z: -0.518324390167475
+        }
+        MARKER:  {
+            NAME: "M041"
+            X: -5.80528917968259
+            Y: 6.63715572878754
+            Z: 7.41531344751053
+        }
+        MARKER:  {
+            NAME: "M042"
+            X: -12.3562607153371
+            Y: 5.03916420663786
+            Z: 8.51791713736462
+        }
+        MARKER:  {
+            NAME: "M043"
+            X: -18.3344427677664
+            Y: 85.1965169843173
+            Z: -2.32386770019447
+        }
+        MARKER:  {
+            NAME: "M044"
+            X: 0
+            Y: 0
+            Z: 0
+        }
+        MARKER:  {
+            NAME: "M045"
+            X: 0
+            Y: 0
+            Z: 0
+        }
+    }
+    RIGIDBODYLIST:  {
+        RIGIDBODY:  {
+            NAME: "Head"
+            MARKERLIST:  {
+                MARKER: "M000"
+                MARKER: "M001"
+                MARKER: "M002"
+                MARKER: "M003"
+            }
+        }
+        RIGIDBODY:  {
+            NAME: "LeftShoulder"
+            MARKERLIST:  {
+                MARKER: "M011"
+                MARKER: "M012"
+                MARKER: "M014"
+            }
+        }
+        RIGIDBODY:  {
+            NAME: "RightShoulder"
+            MARKERLIST:  {
+                MARKER: "M010"
+                MARKER: "M013"
+                MARKER: "M021"
+            }
+        }
+        RIGIDBODY:  {
+            NAME: "Torso"
+            MARKERLIST:  {
+                MARKER: "M004"
+                MARKER: "M005"
+                MARKER: "M006"
+                MARKER: "M007"
+            }
+        }
+        RIGIDBODY:  {
+            NAME: "LeftLowerArm"
+            MARKERLIST:  {
+                MARKER: "M016"
+                MARKER: "M017"
+            }
+        }
+        RIGIDBODY:  {
+            NAME: "LeftHand"
+            MARKERLIST:  {
+                MARKER: "M018"
+                MARKER: "M019"
+                MARKER: "M020"
+            }
+        }
+        RIGIDBODY:  {
+            NAME: "RightLowerArm"
+            MARKERLIST:  {
+                MARKER: "M023"
+                MARKER: "M024"
+            }
+        }
+        RIGIDBODY:  {
+            NAME: "RightHand"
+            MARKERLIST:  {
+                MARKER: "M025"
+                MARKER: "M026"
+                MARKER: "M027"
+            }
+        }
+        RIGIDBODY:  {
+            NAME: "Hips"
+            MARKERLIST:  {
+                MARKER: "M008"
+                MARKER: "M009"
+                MARKER: "M034"
+                MARKER: "M036"
+            }
+        }
+        RIGIDBODY:  {
+            NAME: "LeftUpperLeg"
+            MARKERLIST:  {
+                MARKER: "M033"
+                MARKER: "M035"
+            }
+        }
+        RIGIDBODY:  {
+            NAME: "RightUpperLeg"
+            MARKERLIST:  {
+                MARKER: "M037"
+                MARKER: "M043"
+            }
+        }
+        RIGIDBODY:  {
+            NAME: "LeftLowerLeg"
+            MARKERLIST:  {
+                MARKER: "M031"
+                MARKER: "M032"
+            }
+        }
+        RIGIDBODY:  {
+            NAME: "RightLowerLeg"
+            MARKERLIST:  {
+                MARKER: "M038"
+                MARKER: "M039"
+            }
+        }
+        RIGIDBODY:  {
+            NAME: "LeftFoot"
+            MARKERLIST:  {
+                MARKER: "M028"
+                MARKER: "M029"
+                MARKER: "M030"
+            }
+        }
+        RIGIDBODY:  {
+            NAME: "RightFoot"
+            MARKERLIST:  {
+                MARKER: "M040"
+                MARKER: "M041"
+                MARKER: "M042"
+            }
+        }
+    }
+}
